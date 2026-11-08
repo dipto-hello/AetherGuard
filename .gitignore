@@ -32,6 +32,11 @@ dist/
 *.key
 *.cert
 *.crt
+*.pfx
+*.p12
+id_rsa*
+*token*.json
+*credentials*.json
 *.db
 *.sqlite
 *.sqlite3
