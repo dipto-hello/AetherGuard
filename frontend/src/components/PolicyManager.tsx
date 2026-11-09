@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import type { PolicyConfig } from '../types';
 import { updatePolicy } from '../api';
 import { Sliders, Save, CheckCircle2 } from 'lucide-react';
@@ -13,11 +13,22 @@ export const PolicyManager: React.FC<PolicyManagerProps> = ({ policy, onPolicyUp
   const [hardCeiling, setHardCeiling] = useState<number>(policy.hard_ceiling_threshold / 100);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [savedSuccess, setSavedSuccess] = useState<boolean>(false);
+  const [prevThresholds, setPrevThresholds] = useState({
+    auto: policy.auto_allow_threshold,
+    ceiling: policy.hard_ceiling_threshold,
+  });
 
-  useEffect(() => {
+  if (
+    prevThresholds.auto !== policy.auto_allow_threshold ||
+    prevThresholds.ceiling !== policy.hard_ceiling_threshold
+  ) {
+    setPrevThresholds({
+      auto: policy.auto_allow_threshold,
+      ceiling: policy.hard_ceiling_threshold,
+    });
     setAutoAllow(policy.auto_allow_threshold / 100);
     setHardCeiling(policy.hard_ceiling_threshold / 100);
-  }, [policy.auto_allow_threshold, policy.hard_ceiling_threshold]);
+  }
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -42,10 +53,10 @@ export const PolicyManager: React.FC<PolicyManagerProps> = ({ policy, onPolicyUp
       <div className="bg-surface rounded border border-borderSubtle p-4">
         <div className="flex items-center justify-between mb-3">
           <div>
-            <h2 className="text-xs font-bold uppercase tracking-wider text-inkPrimary flex items-center gap-1.5">
+            <h1 className="text-xs font-bold uppercase tracking-wider text-inkPrimary flex items-center gap-1.5">
               <Sliders className="w-3.5 h-3.5 text-inkMuted" />
               <span>Deterministic Execution Firewall Rules</span>
-            </h2>
+            </h1>
             <p className="text-xs text-inkMuted">
               Thresholds are in major currency units and currently use the same numeric limits for each currency.
             </p>
@@ -56,9 +67,9 @@ export const PolicyManager: React.FC<PolicyManagerProps> = ({ policy, onPolicyUp
         </div>
 
         {savedSuccess && (
-          <div className="p-3 mb-3 rounded bg-emerald-950/20 border border-emerald-800/40 text-xs text-emerald-300 flex items-center gap-2 font-mono">
+          <div role="status" aria-live="polite" className="p-3 mb-3 rounded bg-emerald-950/20 border border-emerald-800/40 text-xs text-emerald-300 flex items-center gap-2 font-mono">
             <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>Policy thresholds updated.</span>
+            <span>Policy thresholds updated.</span>
           </div>
         )}
 

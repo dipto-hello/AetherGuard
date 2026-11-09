@@ -9,7 +9,7 @@ from app.governance.mcp_server import create_governed_mcp_server
 def test_setup():
     conn = init_db(":memory:")
     reset_synthetic_data(conn)
-    server = create_governed_mcp_server(conn)
+    server = create_governed_mcp_server(conn, authenticated_caller="operator_dipto")
     yield conn, server
     conn.close()
 
@@ -24,19 +24,27 @@ async def test_mcp_tools_list(test_setup):
 @pytest.mark.asyncio
 async def test_mcp_lookup_order(test_setup):
     conn, server = test_setup
-    call_res = await server.call_tool("lookup_order", {"order_id": "ORD-101"})
+    expiry = (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()
+    save_task_scope(
+        conn=conn, scope_id="scope-mcp-lookup", operator_id="operator_dipto", order_id="ORD-101",
+        allowed_action="refund_order", max_amount=5000, allowed_currency="USD",
+        allowed_destination="card_visa_4242", expires_at=expiry
+    )
+    call_res = await server.call_tool("lookup_order", {"order_id": "ORD-101", "scope_id": "scope-mcp-lookup", "caller_id": "operator_dipto"})
     assert not call_res.is_error
     data = json.loads(call_res.content[0].text)
     assert data["order_id"] == "ORD-101"
     assert data["paid_amount"] == 25000
-    assert data["original_destination"] == "card_visa_4242"
+    assert "customer_name" not in data
+    assert "original_destination" not in data
+    assert data["masked_destination"] == "card...4242"
 
 
 @pytest.mark.asyncio
 async def test_mcp_refund_requires_stable_idempotency_key(test_setup):
     conn, server = test_setup
     expiry = (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()
-    save_task_scope(conn=conn, scope_id='require-key', operator_id='test', order_id='ORD-101',
+    save_task_scope(conn=conn, scope_id='require-key', operator_id='operator_dipto', order_id='ORD-101',
                     allowed_action='refund_order', max_amount=5000, allowed_currency='USD',
                     allowed_destination='card_visa_4242', expires_at=expiry)
     args = {'order_id': 'ORD-101', 'amount': 4000, 'currency': 'USD',
@@ -160,3 +168,110 @@ async def test_mcp_refund_requiring_human_approval(test_setup):
     # Backend balance MUST NOT be deducted
     order = get_order(conn, "ORD-101")
     assert order["refundable_amount"] == 25000
+
+
+@pytest.mark.asyncio
+async def test_lookup_order_requires_valid_scope(test_setup):
+    conn, server = test_setup
+    expiry = (datetime.now(timezone.utc) + timedelta(hours=2)).isoformat()
+    save_task_scope(
+        conn=conn,
+        scope_id="scope-lookup-req",
+        operator_id="operator_dipto",
+        order_id="ORD-101",
+        allowed_action="refund_order",
+        max_amount=5000,
+        allowed_currency="USD",
+        allowed_destination="card_visa_4242",
+        expires_at=expiry
+    )
+    # When active scopes exist, lookup_order without scope_id must be blocked
+    call_res = await server.call_tool("lookup_order", {"order_id": "ORD-101"})
+    assert call_res.is_error is True
+    err = json.loads(call_res.content[0].text)
+    assert err["error"] == "SCOPE_ID_REQUIRED"
+
+    audit = conn.execute("SELECT verdict, reason FROM audit_events WHERE tool = 'lookup_order' ORDER BY rowid DESC LIMIT 1").fetchone()
+    assert audit["verdict"] == "BLOCKED"
+    assert "OUTSIDE_TRUSTED_TASK_SCOPE: Scope ID required for lookup" in audit["reason"]
+
+
+@pytest.mark.asyncio
+async def test_lookup_order_cross_scope_blocked(test_setup):
+    conn, server = test_setup
+    expiry = (datetime.now(timezone.utc) + timedelta(hours=2)).isoformat()
+    save_task_scope(
+        conn=conn,
+        scope_id="scope-lookup-cross",
+        operator_id="operator_dipto",
+        order_id="ORD-101",
+        allowed_action="refund_order",
+        max_amount=5000,
+        allowed_currency="USD",
+        allowed_destination="card_visa_4242",
+        expires_at=expiry
+    )
+    # Scope is for ORD-101, agent attempts to read ORD-104 (enterprise order)
+    call_res = await server.call_tool("lookup_order", {"order_id": "ORD-104", "scope_id": "scope-lookup-cross", "caller_id": "operator_dipto"})
+    assert call_res.is_error is True
+    err = json.loads(call_res.content[0].text)
+    assert err["error"] == "OUTSIDE_TRUSTED_TASK_SCOPE"
+
+    audit = conn.execute("SELECT verdict, reason FROM audit_events WHERE tool = 'lookup_order' ORDER BY rowid DESC LIMIT 1").fetchone()
+    assert audit["verdict"] == "BLOCKED"
+    assert "OUTSIDE_TRUSTED_TASK_SCOPE: Scope authorized order 'ORD-101', attempted 'ORD-104'" in audit["reason"]
+
+
+@pytest.mark.asyncio
+async def test_lookup_order_expired_scope_blocked(test_setup):
+    conn, server = test_setup
+    past_expiry = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
+    save_task_scope(
+        conn=conn,
+        scope_id="scope-lookup-expired",
+        operator_id="operator_dipto",
+        order_id="ORD-101",
+        allowed_action="refund_order",
+        max_amount=5000,
+        allowed_currency="USD",
+        allowed_destination="card_visa_4242",
+        expires_at=past_expiry
+    )
+    call_res = await server.call_tool("lookup_order", {"order_id": "ORD-101", "scope_id": "scope-lookup-expired", "caller_id": "operator_dipto"})
+    assert call_res.is_error is True
+    err = json.loads(call_res.content[0].text)
+    assert err["error"] == "TASK_SCOPE_EXPIRED"
+
+    audit = conn.execute("SELECT verdict, reason FROM audit_events WHERE tool = 'lookup_order' ORDER BY rowid DESC LIMIT 1").fetchone()
+    assert audit["verdict"] == "BLOCKED"
+    assert audit["reason"] == "TASK_SCOPE_EXPIRED"
+
+
+@pytest.mark.asyncio
+async def test_lookup_order_within_scope_allowed(test_setup):
+    conn, server = test_setup
+    expiry = (datetime.now(timezone.utc) + timedelta(hours=2)).isoformat()
+    save_task_scope(
+        conn=conn,
+        scope_id="scope-lookup-valid",
+        operator_id="operator_dipto",
+        order_id="ORD-101",
+        allowed_action="refund_order",
+        max_amount=5000,
+        allowed_currency="USD",
+        allowed_destination="card_visa_4242",
+        expires_at=expiry
+    )
+    call_res = await server.call_tool("lookup_order", {"order_id": "ORD-101", "scope_id": "scope-lookup-valid", "caller_id": "operator_dipto"})
+    assert call_res.is_error is False
+    data = json.loads(call_res.content[0].text)
+    assert data["order_id"] == "ORD-101"
+    assert data["paid_amount"] == 25000
+    assert "customer_name" not in data
+    assert "original_destination" not in data
+    assert data["masked_destination"] == "card...4242"
+
+    audit = conn.execute("SELECT verdict, reason FROM audit_events WHERE tool = 'lookup_order' ORDER BY rowid DESC LIMIT 1").fetchone()
+    assert audit["verdict"] == "ALLOWED"
+    assert audit["reason"] == "Order lookup succeeded"
+

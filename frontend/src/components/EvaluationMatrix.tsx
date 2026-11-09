@@ -29,9 +29,9 @@ export const EvaluationMatrix: React.FC = () => {
           <div>
             <div className="flex items-center gap-1.5 mb-1">
               <Award className="w-4 h-4 text-inkMuted" />
-              <h2 className="text-xs font-bold uppercase tracking-wider text-inkPrimary">
+              <h1 className="text-xs font-bold uppercase tracking-wider text-inkPrimary">
                 10-Case Adversarial &amp; Legitimate Benchmark Suite
-              </h2>
+              </h1>
             </div>
             <p className="text-xs text-inkMuted">
               Deterministic boundary cases using synthetic actions. This suite does not test a live model or prompt injection.
@@ -58,7 +58,7 @@ export const EvaluationMatrix: React.FC = () => {
         </div>
 
         {errorMsg && (
-          <div className="p-3 mt-3 rounded bg-red-950/20 border border-red-800/40 text-xs text-red-300 flex items-center gap-2 font-mono">
+          <div role="alert" aria-live="assertive" className="p-3 mt-3 rounded bg-red-950/20 border border-red-800/40 text-xs text-red-300 flex items-center gap-2 font-mono">
             <AlertTriangle className="w-4 h-4 shrink-0" />
             <span>{errorMsg}</span>
           </div>

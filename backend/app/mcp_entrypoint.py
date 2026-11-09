@@ -13,9 +13,10 @@ from app.governance.mcp_server import create_governed_mcp_server
 def main():
     # Allow overriding database path via environment variable
     db_path = os.environ.get("AETHERGUARD_DB_PATH")
+    authenticated_operator = os.environ.get("AETHERGUARD_AUTHENTICATED_OPERATOR")
     conn = init_db(db_path)
     try:
-        server = create_governed_mcp_server(conn)
+        server = create_governed_mcp_server(conn, authenticated_caller=authenticated_operator)
         server.run(transport="stdio")
     finally:
         conn.close()

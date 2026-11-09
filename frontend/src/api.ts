@@ -17,39 +17,67 @@ export function setOperatorToken(token: string) {
   operatorToken = token;
 }
 
+async function extractErrorMessage(res: Response, fallback: string): Promise<string> {
+  try {
+    const data = await res.json();
+    if (typeof data?.detail === 'string') return data.detail;
+    if (typeof data?.detail?.message === 'string') return data.detail.message;
+    if (Array.isArray(data?.detail)) {
+      return data.detail.map((err: any) => err.msg || JSON.stringify(err)).join(', ');
+    }
+    if (typeof data?.message === 'string') return data.message;
+    if (typeof data?.error === 'string') return data.error;
+  } catch {
+    // Non-JSON response body
+  }
+  return res.statusText || fallback;
+}
+
 async function apiFetch(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {
   const headers = new Headers(init.headers);
   if (operatorToken) headers.set('Authorization', `Bearer ${operatorToken}`);
   const response = await fetch(input, { ...init, headers });
   if (response.status === 401 || response.status === 403) throw new Error('Access denied. Check the operator token.');
-  if (response.status === 503) throw new Error('The server is not configured for operator access.');
+  if (response.status === 503) {
+    let errorDetail = '';
+    try {
+      const errorBody = await response.clone().json();
+      errorDetail = typeof errorBody?.detail === 'string' ? errorBody.detail : '';
+    } catch {
+      // empty body or not JSON
+    }
+    if (!errorDetail || errorDetail.includes('operator') || errorDetail.includes('configured')) {
+      throw new Error('The server is not configured for operator access.');
+    }
+    throw new Error(errorDetail);
+  }
   return response;
 }
 
 export async function fetchOrders(): Promise<Order[]> {
   const res = await apiFetch(`${BASE_URL}/api/sandbox/orders`);
-  if (!res.ok) throw new Error('Failed to fetch sandbox orders');
+  if (!res.ok) throw new Error(await extractErrorMessage(res, 'Failed to fetch sandbox orders'));
   const data = await res.json();
   return data.orders;
 }
 
 export async function fetchRefunds(): Promise<Refund[]> {
   const res = await apiFetch(`${BASE_URL}/api/sandbox/refunds`);
-  if (!res.ok) throw new Error('Failed to fetch refunds');
+  if (!res.ok) throw new Error(await extractErrorMessage(res, 'Failed to fetch refunds'));
   const data = await res.json();
   return data.refunds;
 }
 
 export async function resetSandbox(): Promise<string> {
   const res = await apiFetch(`${BASE_URL}/api/sandbox/reset`, { method: 'POST' });
-  if (!res.ok) throw new Error('Failed to reset sandbox');
+  if (!res.ok) throw new Error(await extractErrorMessage(res, 'Failed to reset sandbox'));
   const data = await res.json();
   return data.message;
 }
 
 export async function fetchPolicy(): Promise<PolicyConfig> {
   const res = await apiFetch(`${BASE_URL}/api/governance/policy`);
-  if (!res.ok) throw new Error('Failed to fetch policy configuration');
+  if (!res.ok) throw new Error(await extractErrorMessage(res, 'Failed to fetch policy configuration'));
   const data = await res.json();
   return data.policy;
 }
@@ -60,7 +88,7 @@ export async function updatePolicy(updates: Partial<PolicyConfig>): Promise<Poli
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(updates)
   });
-  if (!res.ok) throw new Error('Failed to update policy');
+  if (!res.ok) throw new Error(await extractErrorMessage(res, 'Failed to update policy'));
   const data = await res.json();
   return data.policy;
 }
@@ -79,14 +107,14 @@ export async function createTaskScope(scope: {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(scope)
   });
-  if (!res.ok) throw new Error('Failed to create task scope');
+  if (!res.ok) throw new Error(await extractErrorMessage(res, 'Failed to create task scope'));
   const data = await res.json();
   return data.scope;
 }
 
 export async function fetchPendingApprovals(): Promise<PendingAction[]> {
   const res = await apiFetch(`${BASE_URL}/api/governance/pending-approvals`);
-  if (!res.ok) throw new Error('Failed to fetch pending approvals');
+  if (!res.ok) throw new Error(await extractErrorMessage(res, 'Failed to fetch pending approvals'));
   const data = await res.json();
   return data.pending_actions;
 }
@@ -103,8 +131,7 @@ export async function decideApproval(
     body: JSON.stringify({ decision, reviewer_id: reviewerId, reason })
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail?.message || 'Failed to submit approval decision');
+    throw new Error(await extractErrorMessage(res, 'Failed to submit approval decision'));
   }
   const data = await res.json();
   return data.result;
@@ -112,14 +139,14 @@ export async function decideApproval(
 
 export async function fetchAuditLogs(): Promise<AuditEvent[]> {
   const res = await apiFetch(`${BASE_URL}/api/governance/audit-logs?limit=50`);
-  if (!res.ok) throw new Error('Failed to fetch audit logs');
+  if (!res.ok) throw new Error(await extractErrorMessage(res, 'Failed to fetch audit logs'));
   const data = await res.json();
   return data.logs;
 }
 
 export async function fetchBenchmarkTickets(): Promise<BenchmarkTicket[]> {
   const res = await apiFetch(`${BASE_URL}/api/agent/tickets`);
-  if (!res.ok) throw new Error('Failed to fetch tickets');
+  if (!res.ok) throw new Error(await extractErrorMessage(res, 'Failed to fetch tickets'));
   const data = await res.json();
   return data.tickets;
 }
@@ -140,7 +167,7 @@ export async function processAgentTicket(
       idempotency_key: idempotencyKey
     })
   });
-  if (!res.ok) throw new Error('Failed to process ticket with agent');
+  if (!res.ok) throw new Error(await extractErrorMessage(res, 'Failed to process ticket with agent'));
   const data = await res.json();
   return data.trace;
 }
@@ -150,7 +177,7 @@ export async function runEvaluationSuite(): Promise<EvaluationReport> {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' }
   });
-  if (!res.ok) throw new Error('Failed to run evaluation suite');
+  if (!res.ok) throw new Error(await extractErrorMessage(res, 'Failed to run evaluation suite'));
   const data = await res.json();
   return data.report;
 }
@@ -159,6 +186,6 @@ export async function lookupAction(key: string): Promise<{ action_id: string; st
   const params = new URLSearchParams({ idempotency_key: key });
   const res = await apiFetch(`${BASE_URL}/api/governance/actions/lookup?${params}`);
   if (res.status === 404) throw new Error('No action is recorded yet. A request may still be in progress; do not assume it is safe to retry.');
-  if (!res.ok) throw new Error('Could not check the action outcome.');
+  if (!res.ok) throw new Error(await extractErrorMessage(res, 'Could not check the action outcome.'));
   return (await res.json()).action;
 }

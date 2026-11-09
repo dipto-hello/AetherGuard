@@ -11,10 +11,10 @@ export const AuditLedger: React.FC<AuditLedgerProps> = ({ logs }) => {
     <div className="bg-surface rounded border border-borderSubtle p-4">
       <div className="flex items-center justify-between mb-3">
         <div>
-          <h2 className="text-xs font-bold uppercase tracking-wider text-inkPrimary flex items-center gap-1.5">
+          <h1 className="text-xs font-bold uppercase tracking-wider text-inkPrimary flex items-center gap-1.5">
             <History className="w-3.5 h-3.5 text-inkMuted" />
             <span>Governance Audit History</span>
-          </h2>
+          </h1>
           <p className="text-xs text-inkMuted">
             Recorded governance decisions and fingerprints. This history is not tamper-proof.
           </p>

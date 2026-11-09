@@ -26,7 +26,7 @@ async def test_concurrent_stdio_refunds_respect_scope_budget(temp_db_path):
                     expires_at=(datetime.now(timezone.utc) + timedelta(hours=1)).isoformat())
     conn.close()
     params = StdioServerParameters(command=sys.executable, args=['-m', 'app.mcp_entrypoint'],
-                                   env={**os.environ, 'AETHERGUARD_DB_PATH': temp_db_path})
+                                   env={**os.environ, 'AETHERGUARD_DB_PATH': temp_db_path, 'AETHERGUARD_AUTHENTICATED_OPERATOR': 'test'})
     async with stdio_client(params) as (read, write):
         async with ClientSession(read, write) as session:
             await session.initialize()
@@ -60,10 +60,19 @@ def temp_db_path():
 
 @pytest.mark.asyncio
 async def test_mcp_stdio_tool_discovery_and_order_lookup(temp_db_path):
+    conn = init_db(temp_db_path)
+    expiry = (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()
+    save_task_scope(
+        conn=conn, scope_id="scope-stdio-lookup", operator_id="test_op", order_id="ORD-101",
+        allowed_action="refund_order", max_amount=5000, allowed_currency="USD",
+        allowed_destination="card_visa_4242", expires_at=expiry
+    )
+    conn.close()
+
     params = StdioServerParameters(
         command=sys.executable,
         args=["-m", "app.mcp_entrypoint"],
-        env={**os.environ, "AETHERGUARD_DB_PATH": temp_db_path}
+        env={**os.environ, "AETHERGUARD_DB_PATH": temp_db_path, "AETHERGUARD_AUTHENTICATED_OPERATOR": "test_op"}
     )
     async with stdio_client(params) as (read, write):
         async with ClientSession(read, write) as session:
@@ -77,20 +86,21 @@ async def test_mcp_stdio_tool_discovery_and_order_lookup(temp_db_path):
             assert "refund_order" in tool_names
 
             # Tool call: lookup_order
-            call_res = await session.call_tool("lookup_order", {"order_id": "ORD-101"})
+            call_res = await session.call_tool("lookup_order", {"order_id": "ORD-101", "scope_id": "scope-stdio-lookup", "caller_id": "test_op"})
             assert not call_res.is_error
             data = json.loads(call_res.content[0].text)
             assert data["order_id"] == "ORD-101"
-            assert data["customer_name"] == "Rahim Chowdhury"
+            assert "customer_name" not in data
             assert data["refundable_amount"] == 25000
-            assert data["original_destination"] == "card_visa_4242"
+            assert "original_destination" not in data
+            assert data["masked_destination"] == "card...4242"
 
 @pytest.mark.asyncio
 async def test_mcp_stdio_refund_blocked_without_scope(temp_db_path):
     params = StdioServerParameters(
         command=sys.executable,
         args=["-m", "app.mcp_entrypoint"],
-        env={**os.environ, "AETHERGUARD_DB_PATH": temp_db_path}
+        env={**os.environ, "AETHERGUARD_DB_PATH": temp_db_path, "AETHERGUARD_AUTHENTICATED_OPERATOR": "operator_dipto"}
     )
     async with stdio_client(params) as (read, write):
         async with ClientSession(read, write) as session:
@@ -107,11 +117,9 @@ async def test_mcp_stdio_refund_blocked_without_scope(temp_db_path):
                     "reason": "Unscoped refund attempt", "idempotency_key": "stdio-unscoped"
                 }
             )
-            assert not call_res.is_error
+            assert call_res.is_error is True
             result = json.loads(call_res.content[0].text)
-            assert result["verdict"] == "BLOCKED"
-            assert result["executed"] is False
-            assert "OUTSIDE_TRUSTED_TASK_SCOPE" in result["reason"]
+            assert result["error"] == "SCOPE_ID_REQUIRED"
 
     # Verify sandbox state untouched
     conn = init_db(temp_db_path)
@@ -140,7 +148,7 @@ async def test_mcp_stdio_refund_allowed_with_scope_executes(temp_db_path):
     params = StdioServerParameters(
         command=sys.executable,
         args=["-m", "app.mcp_entrypoint"],
-        env={**os.environ, "AETHERGUARD_DB_PATH": temp_db_path}
+        env={**os.environ, "AETHERGUARD_DB_PATH": temp_db_path, "AETHERGUARD_AUTHENTICATED_OPERATOR": "operator_dipto"}
     )
     async with stdio_client(params) as (read, write):
         async with ClientSession(read, write) as session:
@@ -190,7 +198,7 @@ async def test_mcp_stdio_approval_required_and_resolution(temp_db_path):
     params = StdioServerParameters(
         command=sys.executable,
         args=["-m", "app.mcp_entrypoint"],
-        env={**os.environ, "AETHERGUARD_DB_PATH": temp_db_path}
+        env={**os.environ, "AETHERGUARD_DB_PATH": temp_db_path, "AETHERGUARD_AUTHENTICATED_OPERATOR": "operator_dipto"}
     )
     action_id = None
 

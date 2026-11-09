@@ -28,6 +28,8 @@ dist/
 .env
 .env.*
 *.env
+!.env.example
+!**/.env.example
 *.pem
 *.key
 *.cert
@@ -37,13 +39,31 @@ dist/
 id_rsa*
 *token*.json
 *credentials*.json
+
+# Databases & SQLite State
 *.db
 *.sqlite
 *.sqlite3
+*.db-wal
+*.db-shm
+*.sqlite-wal
+*.sqlite-shm
 data/*.db
 backend/data/*.db
 **/*.db
 **/*.sqlite3
+
+# Backups, Diff Patches, & Internal Audit Artifacts
+backups/
+**/backups/
+brain/
+**/brain/
+*.diff
+*.patch
+*.zip
+*.tar.gz
+*.tgz
+*.bak
 
 # Logs & Temp
 *.log

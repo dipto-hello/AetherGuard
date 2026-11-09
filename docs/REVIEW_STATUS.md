@@ -89,3 +89,21 @@ The user identified public internet deployment as the intended environment. The 
 - Resolved FastAPI Swagger `/docs`, `/redoc` and `/openapi.json` CSP compatibility by permitting jsdelivr CDN assets on doc routes while strictly enforcing `default-src 'self'; object-src 'none'; frame-ancestors 'none'` on root and API routes.
 - Full backend test suite: **109 passed** in 7.17s (including 20 RPM sliding-window rate limiting and 1MB payload size guard). Frontend production build passed in 927ms, and 3/3 frontend API tests passed in 25ms.
 - Real browser end-to-end audit via Playwright MCP verified all views (Agent Arena 5-stage pipeline, balance defense, operator approval desk, 10/10 evaluation benchmark cases passed, 0 console errors).
+
+
+## Final Pre-GitHub Project Polish & Local Safe Freeze — 9 November 2026
+
+- **Full Backend Pytest Suite**: **272 passed** in 17.46s across 28 test modules (including adversarial lookup order, invariant empirical suites, challenger stress, trace minimization, and MCP security remediation).
+- **Standalone Approval Suite**: **6 passed** in 0.01s (`backend/tests/approval_check.py`).
+- **Frontend Node Tests**: **9 passed** in 0.17s (`frontend/tests/api.test.mjs` and `frontend/tests/approval_concurrency_stress.test.mjs`).
+- **Frontend Linter (Oxlint)**: **0 warnings, 0 errors** across 16 files.
+- **Frontend Production Build**: Clean TypeScript/Vite build (**React 19.3.1**, Vite 8.3.6), 2,067 modules transformed, 285 kB production bundle.
+- **Deterministic Evaluation Suite**: **10/10 cases passed** (100.0% accuracy, 0 unauthorized backend writes, 0.0% false positive rate).
+- **Architecture Specifications & Diagrams**: Created [`docs/architecture/SYSTEM_ARCHITECTURE.md`](architecture/SYSTEM_ARCHITECTURE.md), [`docs/architecture/GOVERNED_EXECUTION_FLOW.md`](architecture/GOVERNED_EXECUTION_FLOW.md), and standalone HTML/SVG files verified with `self_check.py`.
+- **Root README Polish**: Rewritten root [`README.md`](../README.md) covering all 24 required specification sections, dual Mermaid diagrams, authentic screenshots from `docs/screenshots/`, safe environment variable templates, and realistic security disclosures.
+- **Git & Secret Hardening**:
+  - Filtered `.gitignore` to prevent tracking of local databases, WAL/SHM files, backups, temporary diffs, and internal audit logs.
+  - Whitelisted `.env.example` templates with safe placeholders.
+  - Performed deep secret scan confirming zero leaked API keys or credentials in source and git history.
+- **Free-Only Cloud Hosting Guide**: Prepared [`docs/FREE_HOSTING_EVALUATION.md`](FREE_HOSTING_EVALUATION.md) comparing Hugging Face Spaces (Docker), Cloudflare Tunnel, and Render Free under strict zero-credit-card constraints.
+- **Local Git State**: Staged all reviewed source, tests, documentation, diagrams, and configuration files for a clean local commit on `main`. No remotes configured, 0 commits pushed, 0 cloud resources created. Ready for private GitHub repository creation in the next session.

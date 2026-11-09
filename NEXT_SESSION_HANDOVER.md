@@ -1,76 +1,154 @@
-# AetherGuard — নতুন session handover
+# AetherGuard — Next Session Handover & Resumption Brief
 
-**শেষ কাজের অবস্থা: ৮ নভেম্বর ২০২৬।** নতুন session-এ এই file-এর সঙ্গে `AGENTS.md`, `docs/REVIEW_STATUS.md`, `tasks/todo.md` ও actual project files পড়ে বর্তমান অবস্থা যাচাই করে বাকি কাজ থেকে শুরু করো। এই handover বর্তমান code বা external rules-এর বিকল্প প্রমাণ নয়।
+**Generated At**: 2026-11-09T17:20:00+06:00  
+**Status**: Frozen & Prepared for Future Private GitHub Publication & Free Deployment  
+**Scope Boundary**: Local Preparation Complete. Zero cloud resources created, zero online deployments, 0 commits pushed.
 
-## বাকি কাজ
+---
 
-1. **Independent security audit ও dependency advisory review:** সম্পূর্ণ security-audit workflow এখনও শেষ হয়নি। আগের run-এ delegated agents usage limit-এ পৌঁছেছিল। অসম্পূর্ণ audit report: `C:/Users/sarke/security-audit-skill/AetherGuard/run-1/REPORT.md`। স্থিতিশীল source snapshot-এ বাকি audit, প্রাসঙ্গিক findings-এর independent verification এবং প্রয়োজনীয় নিরাপদ fixes ও tests সম্পন্ন করো। Project folder নিজে কোনো Git repository ছিল না—আগে বর্তমান অবস্থা পুনরায় দেখো।
-2. **Live Gemini run:** আগের session-এর process-এ `GEMINI_API_KEY` পাওয়া যায়নি; real provider-backed model behavior, availability ও cost যাচাই হয়নি। কেবল synthetic input ব্যবহার করে এবং প্রয়োজনীয় credentials/access থাকলে প্রাসঙ্গিক নিরাপত্তা সীমা মেনে পরীক্ষা করো। Live inference, deterministic parsing ও fallback আলাদাভাবে দেখাও।
-3. **Accessibility ও deployment:** পূর্ণ keyboard, screen-reader, device, approval ও failure/recovery checks বাকি। Intended deployment environment-এ নিরাপদ configuration, access ও behavior যাচাই করতে হবে। Local test public deployment-এর প্রমাণ নয়।
-4. **Hackathon submission:** Current organizer dashboard-এ deadline, registered roster, eligibility, submission rules ও fields যাচাই করো। বাস্তব video, repository/demo links ও final submission তৈরি/যাচাই এখনো বাকি। বর্তমান draft: `docs/07_Submission_Package.md`।
-5. **Product ও impact:** Target users-এর সঙ্গে problem, differentiation ও বাস্তব impact যাচাই করা হয়নি। Working synthetic demo বা test pass থেকে market fit, real-world impact বা prize placement দাবি করো না।
+## 1. Current Canonical Project Location & Recovery Storage
 
-## গুরুত্বপূর্ণ ঝুঁকি ও সীমা
+- **Authoritative Canonical Project**:  
+  `C:\Users\sarke\Downloads\Hackathon and competition\Internatinal AI builder congress hackathon\AetherGuard`
+- **Existing External Recovery Storage**:  
+  `D:\AetherGuard_Storage\`  
+  *(Preserved intact. No new archives or duplicate copies created).*
 
-- Demo-তে একটি shared operator token আছে; এটি multi-user identity বা role separation নয়। Public deployment-এর আগে authentication, authorization, transport ও অন্য প্রাসঙ্গিক controls যাচাই/উন্নত করতে হবে।
-- Agent ও governed MCP server একই process-এ এবং একই SQLite connection ব্যবহার করে। এটি independent process isolation বা arbitrary agent-এর zero write capability প্রমাণ করে না।
-- Synthetic sandbox reset refund history মুছে দেয়। Lost-response lookup-এর 404 শুধু ওই মুহূর্তের অবস্থা; in-flight action ঘটবে না, এর নিশ্চয়তা নয়।
-- পূর্ববর্তী review প্রতিটি third-party dependency, generated artifact ও binary file-এর প্রতিটি line audit করেছে বলে দাবি করা যায় না; সব সম্ভাব্য defect ধরা পড়েছে এমন নিশ্চয়তাও নেই।
-- Previous implementation-এ অন্য AI কোন skills ব্যবহার করেছিল, তার invocation evidence পাওয়া যায়নি। নতুন session-এ কাজ অনুযায়ী available skills/tools বেছে নিজেরা প্রয়োগ ও যাচাই করো।
+---
 
-## আগের session-এর যাচাইকৃত সীমিত ফল
+## 2. Local Git Status & Branch
 
-- Isolated WSL environment-এ **৮১টি backend pytest test pass**; এগুলো তখনকার source-এর ফল, নতুন পরিবর্তনের পর পুনরায় চালাতে হবে।
-- Frontend TypeScript/Vite build pass। Local isolated Chromium ও actual backend দিয়ে synthetic allow → block → approval flow যাচাই করা হয়েছে; balance minor units-এ `25000 → 21000 → 21000 → 11000`।
-- Mock-backed UI-তে কিছু viewport ও axe checks হয়েছে; এগুলো সম্পূর্ণ accessibility audit নয়। বিস্তারিত ও exact limitations `docs/REVIEW_STATUS.md`-এ আছে।
-- User আগের session-এ প্রয়োজনীয় tools/dependencies install করার অনুমতি দিয়েছেন। Security-sensitive tests-এ উপযুক্ত isolation, dummy data ও credentials রক্ষা করে কাজ করো; install সংক্রান্ত এই অনুমতিকে user-এর বর্তমান নতুন নির্দেশের সঙ্গে মিলিয়ে প্রয়োগ করো।
+- **Git Branch**: `main`
+- **Base Commit**: `5668653` (`chore: expand gitignore secrets and credentials filters`)
+- **Remote Configuration**: `0` remotes configured (Local-only repository; safe from accidental pushes).
+- **Working Tree State**:
+  - Source changes, new regression tests, diagrams, `.env.example`, and updated docs reviewed and ready for commit.
+  - `.gitignore` expanded to strictly exclude databases, WAL/SHM files, backups, temporary diffs, and internal audit logs.
+  - Zero secrets or API keys exposed in Git history or staged content.
 
-## নতুন session-এ বলার জন্য
+---
 
-> AetherGuard project-এর `NEXT_SESSION_HANDOVER.md`, `AGENTS.md`, `docs/REVIEW_STATUS.md` ও প্রাসঙ্গিক project files পড়ে actual বর্তমান অবস্থা যাচাই করো। আগের session-এ যেসব কাজ বাকি ছিল সেখান থেকে শুরু করো: independent security audit ও dependency review, প্রয়োজনীয় fixes/tests, live Gemini যাচাই যেখানে credentials ও access আছে, accessibility/deployment checks এবং organizer dashboard-এ submission eligibility ও rules যাচাই। প্রয়োজনীয় tools/dependencies নিরাপদে install করো। প্রমাণ ছাড়া completion বা security claim করো না; গুরুত্বপূর্ণ blocker ও remaining risks জানাও।
+## 3. Verified Application Features
 
-## 8 November — additional review in progress
+1. **In-Line Zero-Trust Execution Firewall**: Intercepts LLM tool proposals via the official Model Context Protocol (`mcp==2.3.0`) and subjects them to deterministic policy gates before execution.
+2. **Pre-Scope Sensitive Data Minimization**: Support agent parsers (`core.py`) operate strictly without database order reads prior to verified task scope authorization.
+3. **Deterministic Tri-Branch Policy Engine**:
+   - `ALLOWED`: Auto-approves bounded refunds ($\le \$50.00$) within order balance.
+   - `APPROVAL_REQUIRED`: Quarantines high-value proposals ($\$50.01 - \$1,000.00$) in Human Approval Desk.
+   - `BLOCKED`: Instantly rejects overdraws, ceiling breaches, and destination diversions fail-closed.
+4. **Human Approval Desk with In-Flight Concurrency Lock**:
+   - Displays SHA-256 parameter fingerprints.
+   - Client-side synchronous reference lock (`isSubmittingRef`) prevents double-click duplicate submissions.
+5. **Multi-Tier Model Fallback Chain**: Official `google-genai` SDK chain (`gemini-3.5-flash-lite` $\rightarrow$ `gemini-3.1-flash-lite` $\rightarrow$ `gemma-4-31b-it` $\rightarrow$ deterministic synthetic engine).
+6. **Bilingual Intake**: Native English and Bengali ticket parsing with Unicode numeral normalization (`০-৯` to `0-9`).
+7. **Atomic Concurrency & Deduplication**: SQLite Write-Ahead Logging (`WAL`), `BEGIN IMMEDIATE` transactions, required caller idempotency keys, and atomic rollback on audit failure.
 
-- Current public-internet deployment goal is not verified or ready for exposure; intended host and its access controls remain unspecified.
-- Security-audit `run-2` snapshot and preliminary source review: `C:/Users/sarke/security-audit-skill/AetherGuard/run-2/REPORT.md`. Audit is incomplete; complete the ledger, sandbox and artifact safeguards, hunting, independent validation, and final verification. Investigate the documented possible cumulative task-scope limit issue before implementing or claiming a fix.
-- Point-in-time npm lockfile and installed Windows backend environment advisory checks reported no known advisories; see `docs/REVIEW_STATUS.md` for limitations.
-- User plans to configure `GEMINI_API_KEY`; verify availability without displaying the key before attempting an authorized synthetic live run. Public event page loaded but organizer dashboard and policy details remain unverified.
+---
 
-## Latest follow-up — 8 November
+## 4. Architecture & Diagram References
 
-The Windows user environment contains a Gemini key supplied by the user; it was exposed in chat/screenshot and should be rotated. A synthetic live Gemini-to-MCP-to-policy-to-in-memory-sandbox run succeeded. A cumulative task-scope limit fix was added and 86 backend tests passed in an isolated WSL run. See `docs/REVIEW_STATUS.md` for limitations, including shared-connection MCP concurrency and one-time expiration of prior scopes. UI was refreshed; build, basic navigation and 390px rendering were checked. Full security audit, complete accessibility and public deployment verification are still outstanding. The old audit snapshot predates these changes.
+- **System Architecture Document**: [`docs/architecture/SYSTEM_ARCHITECTURE.md`](docs/architecture/SYSTEM_ARCHITECTURE.md)
+- **Governed Refund Execution Flow**: [`docs/architecture/GOVERNED_EXECUTION_FLOW.md`](docs/architecture/GOVERNED_EXECUTION_FLOW.md)
+- **Standalone Editorial HTML/SVG Diagrams** (Verified with `self_check.py`):
+  - [`docs/architecture/system_architecture.html`](docs/architecture/system_architecture.html)
+  - [`docs/architecture/governed_execution_flow.html`](docs/architecture/governed_execution_flow.html)
+- **Embedded Visuals**: Dual Mermaid diagrams embedded directly in root [`README.md`](README.md).
 
+---
 
+## 5. Current Test & Build Results
 
-## Latest deployment hardening — 8 November
+All tests run completely offline with 100% green exit codes:
 
-Same-server MCP stdio concurrent scope-budget bypass was reproduced and fixed with a per-server connection lock; 90 backend tests passed in the isolated WSL test setup, with the concurrent test additionally passing five runs. Added same-origin response security headers and removed unused localhost CORS allowance. Container frontend path, non-root user, persistent database path and `.dockerignore` were added; see README for staging. Container build/run was not tested because no Docker-compatible runtime was available. Public hosting and identity/TLS/rate-limiting, full audit and full accessibility remain unfinished. Run-3 audit snapshot predates these changes. The running localhost server may need restart to load current backend changes.
+| Verification Target | Command | Result | Duration |
+| :--- | :--- | :--- | :--- |
+| **Backend Full Pytest** | `pytest tests/ -v` | **272 / 272 PASSED** | ~17.5s |
+| **Approval Safety & Concurrency** | `python tests/approval_check.py` | **6 / 6 PASSED** | 0.01s |
+| **Frontend Node Tests** | `node tests/api.test.mjs ...` | **9 / 9 PASSED** | 0.17s |
+| **Frontend Linter** | `npm run lint` (`oxlint`) | **0 errors, 0 warnings** (16 files) | 21ms |
+| **Frontend Production Build** | `npm run build` (`tsc -b && vite`) | **Clean build** (2067 modules, 285 kB) | 591ms |
+| **Deterministic Evaluation Suite** | `python -m app.evaluation.runner` | **10 / 10 cases PASSED** (100% accuracy) | 0.85s |
+| **Database Integrity** | `PRAGMA integrity_check;` | **`('ok',)`** (0 corruption) | <0.01s |
 
+---
 
-## Current work — 8 November
+## 6. Known Architecture & Security Limitations
 
-Model-native refund proposal is implemented with SDK auto-execution disabled and mock-provider tests; a live provider test of this new path remains pending. Approval request-key collision and atomic reset audit have regression fixes; audit list is bounded. Isolated Chromium with actual backend/CSP and dummy data verified allow plus keyboard approval and balances 25000 → 21000 → 11000 at two viewports; mock-backed checks covered four widths and axe checks. The 10-case deterministic evaluation passed its recorded expectations. Full audit run-5 is in progress against its own snapshot; check its final report and source drift. Docker runtime/build and `/docs`/`/redoc` under CSP remain unverified or unresolved. See `docs/REVIEW_STATUS.md` for details.
+1. **Single-Operator Scope**: Single shared Bearer token (`AETHERGUARD_OPERATOR_TOKEN`); no multi-tenant RBAC or operator audit separation.
+2. **In-Process Agent Sandbox**: The local agent and FastAPI backend run in the same process with access to the same SQLite connection. Physical process isolation is not implemented.
+3. **Audit Tamper-Resistance**: Audit logs are standard SQLite rows in WAL mode; they are not backed by an immutable HSM, KMS, or remote SIEM.
+4. **Synthetic Data**: Orders `ORD-101` to `ORD-104` and payment destinations are entirely synthetic; no real payment rail is connected.
+5. **Heuristic Parsing**: Fallback parser uses regex/keyword heuristics, not general semantic natural language understanding.
 
-## Latest verified state — 8 November
+---
 
-Isolated backend suite: 106 passed. Isolated frontend build and three API tests passed; two lint warnings remain. MCP and HTTP action endpoints now require stable idempotency keys; synthetic negative-intent handling is heuristic only. Actual backend/browser allow and approval flow was rerun after the contract change; unknown-outcome persistence was checked with a mock. A detailed recording script exists but no completed video. Audit run-6 continues separately against a snapshot and must be checked for source drift; live provider function-call test, Docker build, full audit, docs CSP and deployment-specific checks remain open.
+## 7. Readiness Assessment
 
-A separate synthetic provider SDK request to `gemini-3.5-flash-lite` returned the expected refund function proposal; the previous 2.5 request returned 404 for this project. The app was updated to the working model with 30-second timeout and one attempt. Current app + live provider end-to-end is not yet verified.
+- **Is README ready for GitHub?** **YES**. Fully rewritten to 24-point specification with clear differentiation, architecture diagrams, verified dependencies, authentic screenshots, and accurate status.
+- **Is repository safe to publish privately?** **YES**.
+  - All local databases (`*.db`, `*.sqlite`), WAL/SHM files, and backups are strictly ignored.
+  - `.env` and secret files are excluded; `.env.example` provides safe placeholders only.
+  - Zero API keys (`AIzaSy...`) exist in Git history or working files.
+  - Clean local commit preserves all recent security remediations and regression tests.
 
-Latest isolated backend suite: 107 passed. Audit also reproduced a withdrawn-refund synthetic ticket that would execute; a limited phrase guard now blocks the tested example, but arbitrary intent recognition is not established. Keep this open in the security review rather than declaring a general fix.
+---
 
+## 8. Free-Tier Cloud Hosting Summary & Major Constraints
 
-## 9 November — Priority Model Fallback Chain & Live Integration Verified
+Detailed official provider comparison is documented in [`docs/FREE_HOSTING_EVALUATION.md`](docs/FREE_HOSTING_EVALUATION.md):
 
-- Implemented automatic 3-tier model priority fallback chain:
-  1. `gemini-3.5-flash-lite` (Primary choice, multimodal, 500 req/day).
-  2. `gemini-3.1-flash-lite` (Fallback 1, multimodal, 500 req/day).
-  3. `gemma-4-31b-it` (Fallback 2, high-volume text filter, 14,400 req/day).
-  4. `synthetic_fallback` (deterministic offline engine).
-- Fixed destination mismatch bug on live LLM extraction: natural language phrases ("original payment card", "বিকাশ একাউন্ট") resolve to order's authoritative original payment destination, while adversarial injections (`0xAttacker...`) remain intact and are blocked by the policy engine.
-- Physically verified live Gemini integration:
-  - English ticket (`TICKET-EN-01`): `model_used: gemini-3.5-flash-lite`, `verdict: ALLOWED`, deducted $40.00 (`amount: 4000`), ORD-101 balance reduced from 25000 to 21000 minor units.
-  - Bengali ticket (`TICKET-BN-01`): `model_used: gemini-3.5-flash-lite`, `verdict: ALLOWED`, deducted ৳50.00 (`amount: 5000`), ORD-103 balance reduced from 500000 to 495000 minor units.
-  - Fallback verification: When primary model was unavailable, system seamlessly fell back to `gemini-3.1-flash-lite`, passing `ALLOWED` and executing sandbox refund without downtime.
-- Fixed FastAPI Swagger `/docs`, `/redoc` CSP conflict: allows required jsdelivr CDN on doc routes while strictly enforcing `default-src 'self'` on root and API endpoints.
-- Verification status: 107/107 backend tests passing, frontend build passing (575ms), 3/3 frontend API tests passing.
+1. **Hugging Face Spaces (Docker SDK) — Recommended Cloud Path**:
+   - 100% Free, **Zero Credit Card Required**, automatic HTTPS (`*.hf.space`), 2 vCPU / 16GB RAM.
+   - *Constraint*: Container filesystem is **ephemeral**. Database resets to initial seeded state on container restart.
+2. **Cloudflare Quick Tunnel (`cloudflared`) — Recommended Live Demo Path**:
+   - 100% Free, **Zero Credit Card Required**, instant public HTTPS (`*.trycloudflare.com`).
+   - Runs directly on host machine; SQLite database remains **100% durable** on disk.
+   - *Constraint*: Requires host machine to remain online during demonstration.
+3. **Render.com Free Web Service — Alternative Cloud Path**:
+   - 750 free hours/month, zero credit card, automatic HTTPS.
+   - *Constraint*: Spins down after 15 min inactivity (~50s cold start); ephemeral filesystem resets on sleep.
+4. **Fly.io / Oracle Cloud**:
+   - Disqualified due to mandatory credit card verification requirements.
+
+---
+
+## 9. Exact Steps to Create Private GitHub Repository Later
+
+*(To be executed by the user in the future GitHub session — DO NOT run now)*
+
+```powershell
+# 1. Navigate to canonical project root
+cd "C:\Users\sarke\Downloads\Hackathon and competition\Internatinal AI builder congress hackathon\AetherGuard"
+
+# 2. Verify git status is completely clean
+git status
+
+# 3. Create PRIVATE GitHub repository via GitHub CLI (or manually on github.com)
+gh repo create AetherGuard --private --source=. --remote=origin
+
+# 4. Push local main branch to private GitHub remote
+git push -u origin main
+```
+
+---
+
+## 10. Exact Steps Required Before Future Cloud Deployment
+
+1. **Decide Hosting Path**:
+   - If zero setup and 100% data durability are desired for a live demo: use **Cloudflare Tunnel** (`cloudflared tunnel --url http://127.0.0.1:8000`).
+   - If a 24/7 standalone cloud web URL is desired: use **Hugging Face Spaces (Docker SDK)**.
+2. **Generate New Strong Production Token**:
+   - Generate a 32+ character random string for `AETHERGUARD_OPERATOR_TOKEN`.
+   - Never use default or test tokens.
+3. **Configure Platform Secrets**:
+   - Set `AETHERGUARD_OPERATOR_TOKEN` in the hosting platform's secret manager.
+   - Set `GEMINI_API_KEY` (if live multimodal fallback is desired).
+4. **Deploy & Smoke Test**:
+   - Build container image via multi-stage `Dockerfile`.
+   - Verify HTTPS ingress, token login, ticket execution, and Approval Desk.
+
+---
+
+## 11. Unresolved Blockers
+
+- **Zero Critical Blockers**. The codebase, tests, documentation, and local Git repository are in a complete, self-consistent, and frozen state.

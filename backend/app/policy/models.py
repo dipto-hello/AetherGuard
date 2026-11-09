@@ -26,7 +26,10 @@ class TaskScope(BaseModel):
     expires_at: datetime = Field(..., description="Scope expiration timestamp in UTC")
 
     def is_expired(self) -> bool:
-        return datetime.now(timezone.utc) > self.expires_at
+        expires = self.expires_at
+        if expires.tzinfo is None:
+            expires = expires.replace(tzinfo=timezone.utc)
+        return datetime.now(timezone.utc) > expires
 
 class PolicyConfig(BaseModel):
     """Configurable Deterministic Policy Rules"""

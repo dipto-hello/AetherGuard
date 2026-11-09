@@ -397,7 +397,7 @@ export const AgentArena: React.FC<AgentArenaProps> = ({ tickets, onActionComplet
       </div>
 
       {errorMsg && (
-        <div className="p-3 rounded bg-red-950/20 border border-red-800/40 text-xs text-red-300 font-mono">
+        <div role="alert" aria-live="assertive" className="p-3 rounded bg-red-950/20 border border-red-800/40 text-xs text-red-300 font-mono">
           Error: {errorMsg}
         </div>
       )}

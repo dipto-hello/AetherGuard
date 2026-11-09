@@ -15,10 +15,10 @@ export const SandboxViewer: React.FC<SandboxViewerProps> = ({ orders, refunds, o
       <div className="bg-surface rounded border border-borderSubtle p-4">
         <div className="flex items-center justify-between mb-3">
           <div>
-            <h2 className="text-xs font-bold uppercase tracking-wider text-inkPrimary flex items-center gap-1.5">
+            <h1 className="text-xs font-bold uppercase tracking-wider text-inkPrimary flex items-center gap-1.5">
               <Database className="w-3.5 h-3.5 text-inkMuted" />
               <span>Authoritative Enterprise Sandbox DB</span>
-            </h2>
+            </h1>
             <p className="text-xs text-inkMuted">
               Current synthetic orders and recorded refund history.
             </p>

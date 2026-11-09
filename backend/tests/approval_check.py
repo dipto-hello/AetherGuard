@@ -55,6 +55,8 @@ class ApprovalPolicyChecks(unittest.TestCase):
         save_task_scope(self.conn, self.scope_id, "operator", "ORD-101", "refund_order", 20000,
                         "USD", "card_visa_4242", (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat())
         fingerprint = hashlib.sha256(json.dumps({"tool": "refund_order", "arguments": self.args}, sort_keys=True).encode()).hexdigest()
+        self.conn.execute("INSERT INTO action_requests (idempotency_key, fingerprint, scope_id, action_id) VALUES (?, ?, ?, ?)",
+                          ("idemp-test", fingerprint, self.scope_id, "action-test"))
         self.conn.execute("INSERT INTO pending_actions (action_id, tool, arguments, fingerprint, task_scope_id, status) VALUES (?, ?, ?, ?, ?, ?)",
                           ("action-test", "refund_order", json.dumps(self.args), fingerprint, self.scope_id, "pending"))
         self.conn.commit()

@@ -58,7 +58,7 @@ def test_mcp_startup_does_not_reset_an_existing_empty_database(tmp_path, monkeyp
         def run(self, transport):
             assert transport == "stdio"
 
-    monkeypatch.setattr(mcp_entrypoint, "create_governed_mcp_server", lambda conn: Server())
+    monkeypatch.setattr(mcp_entrypoint, "create_governed_mcp_server", lambda conn, *a, **kw: Server())
     mcp_entrypoint.main()
     conn = init_db(path)
     assert conn.execute("SELECT COUNT(*) FROM orders").fetchone()[0] == 0

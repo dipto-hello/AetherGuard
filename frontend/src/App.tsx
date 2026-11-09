@@ -56,7 +56,7 @@ export function App() {
 
   const loadAllData = async () => {
     try {
-      const [ordList, refList, polData, pendingList, logList, ticketList] = await Promise.all([
+      const results = await Promise.allSettled([
         fetchOrders(),
         fetchRefunds(),
         fetchPolicy(),
@@ -65,20 +65,29 @@ export function App() {
         fetchBenchmarkTickets(),
       ]);
 
-      setOrders(ordList);
-      setRefunds(refList);
-      if (polData) setPolicy(polData);
-      setPendingActions(pendingList);
-      setLogs(logList);
-      setTickets(ticketList);
-      setGlobalError(null);
+      const [ordRes, refRes, polRes, pendingRes, logRes, ticketRes] = results;
+
+      if (ordRes.status === 'fulfilled') setOrders(ordRes.value);
+      if (refRes.status === 'fulfilled') setRefunds(refRes.value);
+      if (polRes.status === 'fulfilled' && polRes.value) setPolicy(polRes.value);
+      if (pendingRes.status === 'fulfilled') setPendingActions(pendingRes.value);
+      if (logRes.status === 'fulfilled') setLogs(logRes.value);
+      if (ticketRes.status === 'fulfilled') setTickets(ticketRes.value);
+
+      const failures = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected');
+      if (failures.length > 0) {
+        if (failures.some(f => f.reason?.message?.includes('Access denied'))) {
+          setOperatorToken('');
+          setAuthenticated(false);
+          return;
+        }
+        if (failures.length === results.length) {
+          setGlobalError(failures[0].reason instanceof Error ? failures[0].reason.message : 'Unable to load backend data.');
+        }
+      } else {
+        setGlobalError(null);
+      }
     } catch (err) {
-      setOrders([]);
-      setRefunds([]);
-      setPolicy(null);
-      setPendingActions([]);
-      setLogs([]);
-      setTickets([]);
       setGlobalError(err instanceof Error ? err.message : 'Unable to load backend data.');
     } finally {
       setIsLoading(false);
@@ -87,10 +96,17 @@ export function App() {
 
   useEffect(() => {
     if (!authenticated) return;
-    loadAllData();
-    // Poll every 5 seconds for live telemetry
-    const interval = setInterval(loadAllData, 5000);
-    return () => clearInterval(interval);
+    let active = true;
+    const fetchTelemetry = () => {
+      if (active) loadAllData();
+    };
+    const timer = setTimeout(fetchTelemetry, 0);
+    const interval = setInterval(fetchTelemetry, 5000);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+      clearInterval(interval);
+    };
   }, [authenticated]);
 
   const handleReset = async () => {
@@ -139,6 +155,12 @@ export function App() {
 
   return (
     <div className="min-h-screen bg-background text-slate-100 flex flex-col font-sans selection:bg-brandCyan selection:text-slate-950">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:px-4 focus:py-2 focus:bg-brandCyan focus:text-slate-950 focus:font-semibold focus:rounded focus:shadow-lg focus:outline-none"
+      >
+        Skip to main content
+      </a>
       <Header
         policy={policy}
         activeTab={activeTab}
@@ -148,7 +170,7 @@ export function App() {
         isResetting={isResetting}
       />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 outline-none">
         <div className="flex justify-end mb-3"><button className="text-xs text-slate-300 underline" onClick={() => { setOperatorToken(''); setAuthenticated(false); }}>Change operator token</button></div>
         {globalError && (
           <div role="alert" className="mb-6 p-4 rounded-xl bg-brandRuby/10 border border-brandRuby/30 flex items-center justify-between text-xs text-brandRuby">
@@ -171,7 +193,7 @@ export function App() {
             <RefreshCw className="w-6 h-6 animate-spin text-brandCyan" />
             <span className="text-xs font-mono">Loading AetherGuard AgentOps telemetry...</span>
           </div>
-        ) : !globalError ? (
+        ) : (
           <>
             {activeTab === 'arena' && (
               <AgentArena tickets={tickets} onActionComplete={loadAllData} unknownAttempt={unknownAttempt} setUnknownAttempt={setUnknownAttempt} />
@@ -197,7 +219,7 @@ export function App() {
               <SandboxViewer orders={orders} refunds={refunds} onRefresh={loadAllData} />
             )}
           </>
-        ) : null}
+        )}
       </main>
 
       <footer className="border-t border-borderSubtle bg-surface/50 py-4 text-center text-xs font-mono text-slate-400">

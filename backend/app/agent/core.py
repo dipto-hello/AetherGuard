@@ -9,7 +9,7 @@ import uuid
 from decimal import Decimal, InvalidOperation
 
 from app.governance.boundary import GovernanceBoundary
-from app.sandbox.service import get_order, DuplicateIdempotencyError
+from app.sandbox.service import get_order, get_task_scope, DuplicateIdempotencyError
 from app.policy.models import TaskScope
 from app.governance.mcp_server import create_governed_mcp_server
 from mcp.client.client import Client
@@ -23,6 +23,23 @@ class SupportAgent:
         self.boundary = boundary
         self.api_key = api_key or os.environ.get("GEMINI_API_KEY")
 
+    @staticmethod
+    def _is_generic_destination(destination: Optional[str]) -> bool:
+        """Identify generic or original payment placeholders that require authoritative enrichment."""
+        if not destination or not destination.strip():
+            return True
+        dest_lower = destination.strip().lower()
+        generic_destinations = {
+            "original payment card", "original card", "original", "my card", "my account",
+            "original destination", "payment card", "default", "card", "original payment method",
+            "original account", "বিকাশ একাউন্ট", "বিকাশ", "কার্ড"
+        }
+        bengali_generic = [
+            "আগের বিকাশ", "আগের কার্ড", "আমার বিকাশ", "আমার কার্ড", "আমার একাউন্ট",
+            "বিকাশ নম্বর", "বিকাশ একাউন্ট", "বিকাশে", "বিকাশ"
+        ]
+        return dest_lower in generic_destinations or any(p in dest_lower for p in bengali_generic)
+
     def _detect_language(self, text: str) -> str:
         """Detect if ticket contains Bengali script"""
         bengali_range = re.compile(r'[\u0980-\u09FF]')
@@ -35,8 +52,12 @@ class SupportAgent:
         """
         lang = self._detect_language(ticket_text)
         
-        # 1. Extract Order ID (e.g. ORD-101, ORD-102, ORD-103, ORD-104)
-        order_match = re.search(r'(ORD-\d+)', ticket_text, re.IGNORECASE)
+        # 1. Normalize Bengali numerals across the entire ticket first
+        bengali_digits = {'০': '0', '১': '1', '২': '2', '৩': '3', '৪': '4', '৫': '5', '৬': '6', '৭': '7', '৮': '8', '৯': '9'}
+        normalized_text = "".join(bengali_digits.get(c, c) for c in ticket_text)
+
+        # Extract Order ID (e.g. ORD-101, ORD-102, ORD-103, ORD-104)
+        order_match = re.search(r'(ORD-\d+)', normalized_text, re.IGNORECASE)
         order_id = order_match.group(1).upper() if order_match else None
 
         # 2. Extract Currency & Amount
@@ -46,15 +67,12 @@ class SupportAgent:
         # Check for BDT / Taka (English & Bengali)
         if "bdt" in ticket_text.lower() or "টাকা" in ticket_text or "৳" in ticket_text:
             currency = "BDT"
-            # Match digits or Bengali numerals
-            bengali_digits = {'০': '0', '১': '1', '২': '2', '৩': '3', '৪': '4', '৫': '5', '৬': '6', '৭': '7', '৮': '8', '৯': '9'}
-            normalized_text = "".join(bengali_digits.get(c, c) for c in ticket_text)
             amount_match = re.search(r'(?:৳\s*([\d,]+(?:\.\d+)?)|([\d,]+(?:\.\d+)?)\s*(?:টাকা|bdt|৳))', normalized_text, re.IGNORECASE)
             if amount_match:
                 amount_minor = self._minor_units(amount_match.group(1) or amount_match.group(2))
         else:
             # Match dollar amounts like $40, $250, $5,000, 40 dollars
-            amount_match = re.search(r'\$\s*([\d,]+(?:\.\d+)?)|([\d,]+(?:\.\d+)?)\s*(?:dollars?|usd)', ticket_text, re.IGNORECASE)
+            amount_match = re.search(r'\$\s*([\d,]+(?:\.\d+)?)|([\d,]+(?:\.\d+)?)\s*(?:dollars?|usd)', normalized_text, re.IGNORECASE)
             if amount_match:
                 raw_amt = (amount_match.group(1) or amount_match.group(2)).replace(',', '')
                 amount_minor = self._minor_units(raw_amt)
@@ -62,9 +80,16 @@ class SupportAgent:
         if re.search(r'(?:[-−]\s*[$৳]\s*[\d০-৯]|[$৳]\s*[-−]\s*[\d০-৯]|[-−]\s*[\d০-৯][\d০-৯,.]*\s*(?:টাকা|bdt|usd|dollars?))', ticket_text, re.IGNORECASE):
             amount_minor = 0
 
-        # shortcut: intent heuristics miss some phrasings; require review when reliable intent matters.
-        if (not re.search(r'\brefund\b|রিফান্ড|ফেরত', ticket_text, re.IGNORECASE)
-                or re.search(r"\b(?:no|not|never|without|don['’]?t|cannot|can['’]?t|withdrawn|withdraw|revoked|retracted)\b|চাই\s*না|দিবেন\s*না|করবেন\s*না|প্রত্যাহার", ticket_text, re.IGNORECASE)):
+        # Refined negation regex: requires refund intent or explicit refund negation
+        negation_pattern = re.compile(
+            r'\b(?:no|not|never|don[\'’]?t|cannot|can[\'’]?t|do\s+not)\s+(?:want\s+(?:a\s+)?)?refund\b|'
+            r'\brefund\b[^\w\n.?!]{0,30}\b(?:is\s+)?(?:not\s+needed|not\s+wanted|withdrawn|withdraw|revoked|retracted|cancelled|canceled)\b|'
+            r'\b(?:refund\s+request\s+)?(?:withdrawn|withdraw|revoked|retracted)\b|'
+            r'\b(?:no|without)\s+refund\b|'
+            r'চাই\s*না|দিবেন\s*না|করবেন\s*না|নেব\s*না|নিব\s*না|দরকার\s*নেই|প্রয়োজন\s*নেই|প্রত্যাহার',
+            re.IGNORECASE
+        )
+        if not re.search(r'\brefund\b|রিফান্ড|ফেরত', ticket_text, re.IGNORECASE) or negation_pattern.search(ticket_text):
             amount_minor = 0
 
         # 3. Destination extraction / diversion detection
@@ -89,11 +114,8 @@ class SupportAgent:
                     destination = cand
                     break
 
-        if not destination and order_id:
-            # Fall back to authoritative original payment destination from order
-            order = get_order(self.boundary.conn, order_id)
-            if order:
-                destination = order["original_destination"]
+        if destination and self._is_generic_destination(destination):
+            destination = None
 
         return {
             "order_id": order_id,
@@ -153,9 +175,9 @@ class SupportAgent:
                 response = client.models.generate_content(
                     model=model_name,
                     contents=(
-                        "Consider the following support ticket in English or Bengali. "
+                        "Consider the following support ticket in English or Bengali enclosed within <ticket> tags. "
                         "Propose a refund only when the ticket requests one; use integer minor units (cents/poisha). "
-                        "Do not invent an external destination.\nTicket:\n" + ticket_text
+                        "Do not invent an external destination.\n<ticket>\n" + ticket_text + "\n</ticket>"
                     ),
                     config=types.GenerateContentConfig(
                         tools=[types.Tool(function_declarations=[declaration])],
@@ -178,17 +200,8 @@ class SupportAgent:
                 order_id = data.get("order_id")
                 destination = data.get("destination", "").strip()
 
-                generic_destinations = {
-                    "original payment card", "original card", "original", "my card", "my account",
-                    "original destination", "payment card", "default", "card", "original payment method",
-                    "original account", "বিকাশ একাউন্ট", "বিকাশ", "কার্ড"
-                }
-                dest_lower = destination.lower()
-                bengali_generic = ["আগের বিকাশ", "আগের কার্ড", "আমার বিকাশ", "আমার কার্ড", "আমার একাউন্ট", "বিকাশ নম্বর", "বিকাশ একাউন্ট", "বিকাশে", "বিকাশ"]
-                if order_id and (dest_lower in generic_destinations or any(p in dest_lower for p in bengali_generic)):
-                    order = get_order(self.boundary.conn, order_id)
-                    if order and order.get("original_destination"):
-                        destination = order["original_destination"]
+                if destination and self._is_generic_destination(destination):
+                    destination = None
 
                 return {
                     "tool": calls[0].name,
@@ -226,18 +239,48 @@ class SupportAgent:
                 parsed = await asyncio.to_thread(self._parse_ticket_llm, ticket_text, api_key=effective_key)
                 model_tag = parsed.get("model_used", "gemini-3.5-flash-lite")
                 mode = "live_gemini"
-            except (ValueError, TypeError, KeyError, AttributeError):
+            except (ValueError, TypeError, KeyError, AttributeError) as err:
                 parsed = {"order_id": None, "currency": "USD", "amount": 0, "destination": None,
-                          "language": self._detect_language(ticket_text)}
+                          "language": self._detect_language(ticket_text), "error": str(err)}
                 mode = "invalid_model_output"
-            except Exception:
-                parsed = self._parse_ticket_synthetic(ticket_text)
-                mode = "synthetic_fallback"
+            except Exception as err:
+                # INV-06: Fail closed on model timeout, 429 quota exhaustion, or API failure.
+                # Do NOT fall back to regex synthetic execution to dispatch real refunds on LLM failure!
+                parsed = {"order_id": None, "currency": "USD", "amount": 0, "destination": None,
+                          "language": self._detect_language(ticket_text), "error": str(err)}
+                mode = "model_failure_fail_closed"
         else:
             parsed = self._parse_ticket_synthetic(ticket_text)
 
         order_id = parsed["order_id"]
-        order = get_order(self.boundary.conn, order_id) if order_id else None
+
+        # Scope validation: low value or ticket text alone is NOT authority.
+        # Only query database for protected order information if governed by a trusted, active, persisted, order-bound task scope.
+        has_valid_scope = False
+        scope_obj = None
+        if task_scope:
+            try:
+                scope_obj = task_scope if isinstance(task_scope, TaskScope) else TaskScope(**task_scope)
+                persisted_scope = get_task_scope(self.boundary.conn, scope_obj.scope_id)
+                if persisted_scope:
+                    persisted_exp = datetime.fromisoformat(persisted_scope["expires_at"])
+                    if persisted_exp.tzinfo is None:
+                        persisted_exp = persisted_exp.replace(tzinfo=timezone.utc)
+                    has_valid_scope = (
+                        datetime.now(timezone.utc) <= persisted_exp
+                        and not scope_obj.is_expired()
+                        and bool(order_id)
+                        and scope_obj.order_id == order_id
+                        and persisted_scope.get("order_id") == order_id
+                    )
+            except Exception:
+                has_valid_scope = False
+
+        order = get_order(self.boundary.conn, order_id) if (order_id and has_valid_scope) else None
+
+        # Authoritative destination enrichment: ONLY performed after successful scope authorization
+        if has_valid_scope and order and self._is_generic_destination(parsed.get("destination")):
+            parsed["destination"] = order.get("original_destination")
 
         # Build proposed tool call
         action_payload = {
@@ -256,14 +299,37 @@ class SupportAgent:
         tool_args = dict(action_payload['arguments'])
         tool_args['order_id'] = tool_args['order_id'] or ''
         tool_args['destination'] = tool_args['destination'] or ''
-        tool_args['scope_id'] = task_scope.scope_id if task_scope else None
+        tool_args['scope_id'] = scope_obj.scope_id if scope_obj else (task_scope.scope_id if task_scope else None)
         tool_args['idempotency_key'] = action_payload['idempotency_key']
-        server = create_governed_mcp_server(self.boundary.conn, self.boundary)
+        server = create_governed_mcp_server(
+            self.boundary.conn,
+            self.boundary,
+            authenticated_caller=scope_obj.operator_id if scope_obj else (task_scope.operator_id if task_scope else None)
+        )
         async with Client(server) as client:
             response = await client.call_tool(action_payload['tool'], tool_args)
         if response.is_error or not response.content:
-            raise RuntimeError('MCP refund tool failed; execution outcome must be checked before retry')
-        evaluation = json.loads(response.content[0].text)
+            if response.content:
+                try:
+                    err_data = json.loads(response.content[0].text)
+                    if err_data.get('error') == 'IDEMPOTENCY_KEY_REUSED':
+                        raise DuplicateIdempotencyError('Idempotency key has already been used; inspect the existing action')
+                    if err_data.get('error'):
+                        evaluation = {
+                            "verdict": "BLOCKED",
+                            "reason": f"OUTSIDE_TRUSTED_TASK_SCOPE: {err_data.get('error')}",
+                            "executed": False,
+                            "action_id": action_payload.get("idempotency_key", ""),
+                            "fingerprint": ""
+                        }
+                    else:
+                        raise RuntimeError('MCP refund tool failed; execution outcome must be checked before retry')
+                except (json.JSONDecodeError, KeyError):
+                    raise RuntimeError('MCP refund tool failed; execution outcome must be checked before retry')
+            else:
+                raise RuntimeError('MCP refund tool failed; execution outcome must be checked before retry')
+        else:
+            evaluation = json.loads(response.content[0].text)
         if evaluation.get('error') == 'IDEMPOTENCY_KEY_REUSED':
             raise DuplicateIdempotencyError('Idempotency key has already been used; inspect the existing action')
         if 'verdict' not in evaluation:
@@ -303,17 +369,32 @@ class SupportAgent:
             }
         ]
 
+        # Determine whether execution was blocked or out of scope
+        is_blocked = (evaluation["verdict"] == "BLOCKED") or (not has_valid_scope)
+
+        # Sanitize parsed parameters in returned trace: strip raw payment destination on blocked / unauthorized requests
+        sanitized_parsed = dict(parsed)
+        if is_blocked:
+            sanitized_parsed["destination"] = None
+
+        # Build minimized order state only when authorized and not blocked
+        order_state = None
+        if order and not is_blocked:
+            dest = order.get("original_destination", "")
+            masked_dest = dest if len(dest) <= 8 else f"{dest[:4]}...{dest[-4:]}"
+            order_state = {
+                "order_id": order["id"],
+                "paid_amount": order["paid_amount"],
+                "refundable_amount": order["refundable_amount"],
+                "masked_destination": masked_dest
+            }
+
         return {
             "ticket_text": ticket_text,
             "language": parsed["language"],
             "agent_mode": mode,
-            "parsed_parameters": parsed,
-            "order_state": {
-                "order_id": order["id"] if order else None,
-                "paid_amount": order["paid_amount"] if order else None,
-                "refundable_amount": order["refundable_amount"] if order else None,
-                "original_destination": order["original_destination"] if order else None
-            } if order else None,
+            "parsed_parameters": sanitized_parsed,
+            "order_state": order_state,
             "proposed_tool": action_payload["tool"],
             "boundary_verdict": evaluation["verdict"],
             "boundary_reason": evaluation["reason"],

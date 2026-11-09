@@ -252,7 +252,7 @@ async def test_mcp_uses_updated_policy(tmp_path):
     path = str(tmp_path / 'sandbox.db')
     conn = init_db(path)
     scope_for(conn)
-    server = create_governed_mcp_server(conn)
+    server = create_governed_mcp_server(conn, authenticated_caller='operator')
     other = get_connection(path)
     policy = load_policy(other)
     policy.hard_ceiling_threshold = 9000

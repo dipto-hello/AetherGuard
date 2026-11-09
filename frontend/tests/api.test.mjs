@@ -46,3 +46,51 @@ test('lookup uses the supplied idempotency key and returns the recorded action',
   assert.equal(new URL(url, 'http://localhost').searchParams.get('idempotency_key'), 'key /+');
   assert.equal(action.status, 'pending');
 });
+
+test('extracts backend error details across status codes and formats', async () => {
+  // 1. String detail (e.g. 429 rate limit or 422 threshold validation)
+  globalThis.fetch = async () => new Response(JSON.stringify({ detail: 'Auto-allow limit must be less than hard ceiling' }), { status: 422 });
+  await assert.rejects(api.updatePolicy({ auto_allow_threshold: 50000 }), /Auto-allow limit must be less than hard ceiling/);
+
+  // 2. Structured detail.message (e.g. 409 conflict)
+  globalThis.fetch = async () => new Response(JSON.stringify({ detail: { message: 'Action act-123 has already been processed' } }), { status: 409 });
+  await assert.rejects(api.decideApproval('act-123', 'approve', 'op'), /Action act-123 has already been processed/);
+
+  // 3. Pydantic array validation error
+  globalThis.fetch = async () => new Response(JSON.stringify({ detail: [{ loc: ['body', 'decision'], msg: 'Field required' }] }), { status: 422 });
+  await assert.rejects(api.decideApproval('act-123', 'approve', 'op'), /Field required/);
+
+  // 4. 503 with specific backend/database outage message
+  globalThis.fetch = async () => new Response(JSON.stringify({ detail: 'Policy configuration unavailable: database disk error' }), { status: 503 });
+  await assert.rejects(api.fetchPolicy(), /Policy configuration unavailable: database disk error/);
+});
+
+test('synchronous in-flight guard prevents duplicate approval submissions', async () => {
+  let callCount = 0;
+  globalThis.fetch = async () => {
+    callCount++;
+    return new Response(JSON.stringify({ result: { status: 'succeeded' } }), { status: 200 });
+  };
+
+  const inFlight = new Set();
+  const executeWithGuard = async (actionId) => {
+    if (inFlight.has(actionId)) return null;
+    inFlight.add(actionId);
+    try {
+      return await api.decideApproval(actionId, 'approve', 'demo_operator');
+    } finally {
+      inFlight.delete(actionId);
+    }
+  };
+
+  // Trigger two rapid synchronous submissions before first completes
+  const p1 = executeWithGuard('act-double-click');
+  const p2 = executeWithGuard('act-double-click');
+  const [res1, res2] = await Promise.all([p1, p2]);
+
+  assert.equal(callCount, 1, 'decideApproval should only be called once');
+  assert.equal(res1.status, 'succeeded');
+  assert.equal(res2, null);
+  assert.equal(inFlight.size, 0, 'inFlight set should be cleared after resolution');
+});
+

@@ -26,21 +26,51 @@ MAX_REQUEST_SIZE = 1_048_576  # 1 MB maximum payload limit
 async def rate_limit_and_size_guard(request: Request, call_next):
     # 1. Payload size check
     content_length = request.headers.get("content-length")
-    if content_length and int(content_length) > MAX_REQUEST_SIZE:
-        return JSONResponse(
-            status_code=413,
-            content={"detail": "Payload Too Large: Maximum allowed request size is 1MB"}
-        )
+    transfer_encoding = request.headers.get("transfer-encoding", "").lower()
+
+    if content_length is not None:
+        try:
+            cl = int(content_length)
+            if cl < 0 or cl > MAX_REQUEST_SIZE:
+                return JSONResponse(
+                    status_code=413,
+                    content={"detail": "Payload Too Large: Maximum allowed request size is 1MB"}
+                )
+        except (ValueError, TypeError):
+            return JSONResponse(
+                status_code=400,
+                content={"detail": "Bad Request: Malformed Content-Length header"}
+            )
+
+    if "chunked" in transfer_encoding or request.method in ("POST", "PUT", "PATCH"):
+        total_size = 0
+        chunks = []
+        async for chunk in request.stream():
+            total_size += len(chunk)
+            if total_size > MAX_REQUEST_SIZE:
+                return JSONResponse(
+                    status_code=413,
+                    content={"detail": "Payload Too Large: Maximum allowed request size is 1MB"}
+                )
+            chunks.append(chunk)
+        request._body = b"".join(chunks)
 
     # 2. Rate limiting for AI ticket processing (/api/agent/process-ticket)
-    # Allows bypassing during automated unit test runs unless explicitly tested
-    if request.url.path == "/api/agent/process-ticket" and not os.environ.get("PYTEST_CURRENT_TEST_BYPASS_RATELIMIT", "1") == "1":
+    # Active by default in production; allows bypassing during test runs when explicitly set to "1"
+    if request.url.path == "/api/agent/process-ticket" and os.environ.get("PYTEST_CURRENT_TEST_BYPASS_RATELIMIT", "0") != "1":
         client_ip = request.client.host if request.client else "unknown"
+        trusted_proxies = {p.strip() for p in os.environ.get("AETHERGUARD_TRUSTED_PROXIES", "127.0.0.1,::1").split(",") if p.strip()}
+        if client_ip in trusted_proxies and "x-forwarded-for" in request.headers:
+            forwarded = request.headers["x-forwarded-for"].split(",")[0].strip()
+            if forwarded:
+                client_ip = forwarded
         now = time.time()
         window = 60.0
         max_rpm = int(os.environ.get("AETHERGUARD_RATE_LIMIT_PER_MINUTE", 20))
         
         _RATE_LIMITS[client_ip] = [t for t in _RATE_LIMITS[client_ip] if now - t < window]
+        if not _RATE_LIMITS[client_ip]:
+            del _RATE_LIMITS[client_ip]
         if len(_RATE_LIMITS[client_ip]) >= max_rpm:
             return JSONResponse(
                 status_code=429,

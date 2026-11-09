@@ -1,19 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import type { PendingAction } from '../types';
 import { decideApproval } from '../api';
 import { Check, X, Shield, Lock, Clock, AlertTriangle, Fingerprint } from 'lucide-react';
 
 interface ApprovalDeskProps {
   pendingActions: PendingAction[];
-  onActionDecided: () => void;
+  onActionDecided: () => void | Promise<void>;
 }
 
 export const ApprovalDesk: React.FC<ApprovalDeskProps> = ({ pendingActions, onActionDecided }) => {
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const inFlightRef = useRef<Set<string>>(new Set());
 
   const handleDecision = async (actionId: string, decision: 'approve' | 'reject') => {
+    if (inFlightRef.current.has(actionId)) return;
+    inFlightRef.current.add(actionId);
     setProcessingId(actionId);
     setErrorMsg(null);
     setSuccessMsg(null);
@@ -21,10 +24,11 @@ export const ApprovalDesk: React.FC<ApprovalDeskProps> = ({ pendingActions, onAc
     try {
       const res = await decideApproval(actionId, decision, 'demo_operator');
       setSuccessMsg(`Action #${actionId} successfully processed: status ${res.status}.`);
-      onActionDecided();
+      await onActionDecided();
     } catch (err: any) {
       setErrorMsg(err.message || 'Failed to process approval decision');
     } finally {
+      inFlightRef.current.delete(actionId);
       setProcessingId(null);
     }
   };
@@ -34,10 +38,10 @@ export const ApprovalDesk: React.FC<ApprovalDeskProps> = ({ pendingActions, onAc
       <div className="bg-surface rounded border border-borderSubtle p-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
           <div>
-            <h2 className="text-xs font-bold uppercase tracking-wider text-inkPrimary flex items-center gap-1.5">
+            <h1 className="text-xs font-bold uppercase tracking-wider text-inkPrimary flex items-center gap-1.5">
               <Lock className="w-3.5 h-3.5 text-amber-400" />
               <span>Human-in-the-Loop Approval Queue</span>
-            </h2>
+            </h1>
             <p className="text-xs text-inkMuted">
               Review the pending action details before approving or rejecting a refund.
             </p>
@@ -46,14 +50,14 @@ export const ApprovalDesk: React.FC<ApprovalDeskProps> = ({ pendingActions, onAc
         </div>
 
         {errorMsg && (
-          <div className="p-3 mb-3 rounded bg-red-950/20 border border-red-800/40 text-xs text-red-300 flex items-center gap-2 font-mono">
+          <div role="alert" aria-live="assertive" className="p-3 mb-3 rounded bg-red-950/20 border border-red-800/40 text-xs text-red-300 flex items-center gap-2 font-mono">
             <AlertTriangle className="w-4 h-4 shrink-0" />
             <span>{errorMsg}</span>
           </div>
         )}
 
         {successMsg && (
-          <div className="p-3 mb-3 rounded bg-emerald-950/20 border border-emerald-800/40 text-xs text-emerald-300 font-mono">
+          <div role="status" aria-live="polite" className="p-3 mb-3 rounded bg-emerald-950/20 border border-emerald-800/40 text-xs text-emerald-300 font-mono">
             {successMsg}
           </div>
         )}
@@ -91,24 +95,24 @@ export const ApprovalDesk: React.FC<ApprovalDeskProps> = ({ pendingActions, onAc
 
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono text-inkMuted">
                       <div>
-                        <span className="text-[10px] text-slate-500 block">Target Order:</span>
+                        <span className="text-[10px] text-slate-400 block">Target Order:</span>
                         <span className="text-white font-semibold">{action.arguments.order_id || 'N/A'}</span>
                       </div>
                       <div>
-                        <span className="text-[10px] text-slate-500 block">Refund Amount:</span>
+                        <span className="text-[10px] text-slate-400 block">Refund Amount:</span>
                         <span className="text-white font-semibold">{currency} {amount}</span>
                       </div>
                       <div>
-                        <span className="text-[10px] text-slate-500 block">Destination:</span>
+                        <span className="text-[10px] text-slate-400 block">Destination:</span>
                         <span className="text-white break-all block">{action.arguments.destination || 'N/A'}</span>
                       </div>
                       <div>
-                        <span className="text-[10px] text-slate-500 block">Reason:</span>
+                        <span className="text-[10px] text-slate-400 block">Reason:</span>
                         <span className="text-slate-300 break-words block">{action.arguments.reason || 'N/A'}</span>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-1.5 text-[10px] font-mono text-slate-500 pt-1">
+                    <div className="flex items-center gap-1.5 text-[10px] font-mono text-slate-400 pt-1">
                       <Fingerprint className="w-3.5 h-3.5 text-slate-400" />
                       <span className="break-all">SHA-256 Fingerprint: {action.fingerprint}</span>
                     </div>
@@ -119,15 +123,15 @@ export const ApprovalDesk: React.FC<ApprovalDeskProps> = ({ pendingActions, onAc
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => handleDecision(action.action_id, 'approve')}
-                      disabled={isProcessing}
+                      disabled={isProcessing || processingId !== null}
                       className="px-3 py-1.5 text-xs font-semibold rounded bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-1.5 transition disabled:opacity-50"
                     >
                       <Check className="w-3.5 h-3.5" />
-                      <span>Approve &amp; Execute</span>
+                      <span>{isProcessing ? 'Processing…' : 'Approve & Execute'}</span>
                     </button>
                     <button
                       onClick={() => handleDecision(action.action_id, 'reject')}
-                      disabled={isProcessing}
+                      disabled={isProcessing || processingId !== null}
                       className="px-3 py-1.5 text-xs font-semibold rounded bg-surfaceCard hover:bg-red-950/40 text-slate-300 hover:text-red-300 border border-borderStrong transition disabled:opacity-50 flex items-center gap-1.5"
                     >
                       <X className="w-3.5 h-3.5" />
