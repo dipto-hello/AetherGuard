@@ -5,6 +5,38 @@ from app.sandbox.service import reset_synthetic_data, get_order, save_task_scope
 from app.policy.models import TaskScope, PolicyConfig, PolicyVerdict
 from app.policy.engine import evaluate_policy
 from app.governance.boundary import GovernanceBoundary
+from app.approval.service import ApprovalError, decide_approval
+from app.sandbox import exchange_rate
+
+
+@pytest.mark.parametrize(("amount", "expected"), [
+    (155625, PolicyVerdict.ALLOWED),
+    (155626, PolicyVerdict.APPROVAL_REQUIRED),
+    (311250, PolicyVerdict.APPROVAL_REQUIRED),
+    (311251, PolicyVerdict.BLOCKED),
+])
+def test_bdt_policy_thresholds_use_usd_quote(db_conn, monkeypatch, amount, expected):
+    monkeypatch.setattr(exchange_rate, "get_display_quote", lambda: {"bdt_per_usd": 124.50})
+    scope = TaskScope(
+        scope_id="bdt-scope", operator_id="operator", order_id="ORD-103",
+        max_amount=500000, allowed_currency="BDT", allowed_destination="bkash_01711000000",
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+    )
+    save_task_scope(db_conn, **scope.model_dump(mode="json"))
+    policy = PolicyConfig(auto_allow_threshold=1250, hard_ceiling_threshold=2500)
+    result = GovernanceBoundary(db_conn, policy).intercept_and_evaluate({
+        "tool": "refund_order",
+        "arguments": {"order_id": scope.order_id, "amount": amount, "currency": "BDT",
+                      "destination": scope.allowed_destination},
+    }, scope)
+    assert result["verdict"] == expected
+    assert get_order(db_conn, scope.order_id)["refundable_amount"] == 500000 - (
+        amount if expected == PolicyVerdict.ALLOWED else 0)
+    if amount == 311250:
+        monkeypatch.setattr(exchange_rate, "get_display_quote", lambda: {"bdt_per_usd": 124.49})
+        with pytest.raises(ApprovalError, match="POLICY_HARD_CEILING"):
+            decide_approval(db_conn, result["action_id"], "approve", "operator", policy_config=policy)
+        assert get_order(db_conn, scope.order_id)["refundable_amount"] == 500000
 
 @pytest.fixture
 def db_conn():

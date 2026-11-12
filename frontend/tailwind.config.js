@@ -25,8 +25,8 @@ export default {
         brandCyan: '#38BDF8',
       },
       fontFamily: {
-        mono: ['"JetBrains Mono"', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
-        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'sans-serif'],
+        mono: ['"JetBrains Mono"', 'ui-monospace', 'SFMono-Regular', 'Menlo', '"Noto Sans Bengali"', 'monospace'],
+        sans: ['"Noto Sans Bengali"', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'sans-serif'],
       }
     },
   },

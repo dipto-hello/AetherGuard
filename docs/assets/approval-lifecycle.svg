@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1096" height="460" viewBox="0 0 1096 460" role="img" aria-labelledby="approval-lifecycle-title approval-lifecycle-desc" id="approval-lifecycle-root">
+<title id="approval-lifecycle-title">Human approval lifecycle</title>
+<desc id="approval-lifecycle-desc">The approval service verifies the stored fingerprint and status. Rejection records a decision. Approval rechecks current authority before execution.</desc>
+<defs>
+      <style>@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&amp;family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500;600&amp;family=Noto+Serif:ital@0;1&amp;family=Noto+Sans+KR:wght@400;500;600&amp;family=Noto+Serif+KR:wght@400&amp;family=Noto+Sans+TC:wght@400;500;600&amp;family=Noto+Serif+TC:wght@400&amp;display=swap');</style><marker id="approval-lifecycle-approval-lifecycle-arrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0L7 3.5L0 7Z" fill="#8b949e"/></marker></defs>
+<rect x="0" y="0" width="1096" height="460" rx="16" fill="#0b0e14"/>
+<text x="32" y="55" fill="#e6edf3" font-family="Instrument Serif, Georgia, serif" font-size="36">Human approval lifecycle</text>
+<g fill="none" stroke="#8b949e" stroke-width="2" marker-end="url(#approval-lifecycle-approval-lifecycle-arrow)">
+<path d="M248 128H304"/>
+<path d="M520 128H576"/>
+<path d="M792 128H848"/>
+<path d="M684 160V208"/>
+<path d="M792 240H848"/>
+<path d="M684 272V320"/>
+</g>
+<g font-family="Geist, Arial, sans-serif">
+<g><rect x="32" y="96" width="216" height="64" rx="8" fill="#151b27" stroke="#46556b"/><text x="48" y="123" fill="#e6edf3" font-size="17" font-weight="600">Pending action</text><text x="48" y="143" fill="#b4bfcc" font-size="13">Arguments · fingerprint</text></g>
+<g><rect x="304" y="96" width="216" height="64" rx="8" fill="#151b27" stroke="#46556b"/><text x="320" y="123" fill="#e6edf3" font-size="17" font-weight="600">Operator decision</text><text x="320" y="143" fill="#b4bfcc" font-size="13">Authenticated approval API</text></g>
+<g><rect x="576" y="96" width="216" height="64" rx="8" fill="#102736" stroke="#38bdf8"/><text x="592" y="123" fill="#e6edf3" font-size="17" font-weight="600">Verify stored action</text><text x="592" y="143" fill="#b4bfcc" font-size="13">Status · fingerprint</text></g>
+<g><rect x="848" y="96" width="216" height="64" rx="8" fill="#151b27" stroke="#46556b"/><text x="864" y="123" fill="#e6edf3" font-size="17" font-weight="600">Rejected</text><text x="864" y="143" fill="#b4bfcc" font-size="13">Record audit · no refund</text></g>
+<g><rect x="576" y="208" width="216" height="64" rx="8" fill="#102736" stroke="#38bdf8"/><text x="592" y="235" fill="#e6edf3" font-size="17" font-weight="600">Recheck authority</text><text x="592" y="255" fill="#b4bfcc" font-size="13">Scope · policy · budget</text></g>
+<g><rect x="848" y="208" width="216" height="64" rx="8" fill="#151b27" stroke="#46556b"/><text x="864" y="235" fill="#e6edf3" font-size="17" font-weight="600">Failed validation</text><text x="864" y="255" fill="#b4bfcc" font-size="13">Rollback · no refund</text></g>
+<g><rect x="576" y="320" width="216" height="64" rx="8" fill="#151b27" stroke="#46556b"/><text x="592" y="347" fill="#e6edf3" font-size="17" font-weight="600">Executed</text><text x="592" y="367" fill="#b4bfcc" font-size="13">Refund and audit commit</text></g>
+<path d="M32 416H1064" stroke="#46556b"/>
+<text x="32" y="440" fill="#b4bfcc" font-size="14">Expired scope prevents approval. Rejected and executed actions are terminal.</text>
+</g>
+</svg>

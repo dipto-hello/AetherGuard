@@ -16,7 +16,9 @@ from app.policy.storage import load_policy
 def create_governed_mcp_server(
     conn: sqlite3.Connection,
     boundary: Optional[GovernanceBoundary] = None,
-    authenticated_caller: Optional[str] = None
+    authenticated_caller: Optional[str] = None,
+    *,
+    require_refund_approval: bool = False,
 ) -> MCPServer:
     """
     Factory creating an MCP Server whose tool calls are governed by AetherGuard.
@@ -321,7 +323,9 @@ def create_governed_mcp_server(
 
             # 5. Route through zero-trust governance boundary
             try:
-                evaluation = gov_boundary.intercept_and_evaluate(action_payload, task_scope=task_scope)
+                evaluation = gov_boundary.intercept_and_evaluate(
+                    action_payload, task_scope=task_scope, require_refund_approval=require_refund_approval,
+                )
             except DuplicateIdempotencyError:
                 return types.CallToolResult(
                     is_error=True,

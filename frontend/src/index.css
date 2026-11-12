@@ -2,6 +2,26 @@
 @tailwind components;
 @tailwind utilities;
 
+@font-face {
+  font-family: 'Noto Sans Bengali';
+  font-style: normal;
+  font-weight: 100 900;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url(/fonts/noto-sans-bengali-bengali.woff2) format('woff2');
+  unicode-range: U+0951-0952, U+0964-0965, U+0980-09FE, U+1CD0, U+1CD2, U+1CD5-1CD6, U+1CD8, U+1CE1, U+1CEA, U+1CED, U+1CF2, U+1CF5-1CF7, U+200C-200D, U+20B9, U+25CC, U+A8F1, U+11DF0-11DF1;
+}
+
+@font-face {
+  font-family: 'Noto Sans Bengali';
+  font-style: normal;
+  font-weight: 100 900;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url(/fonts/noto-sans-bengali-latin.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
 :root {
   color-scheme: dark;
 }
@@ -10,13 +30,30 @@ body {
   margin: 0;
   background-color: #090D16;
   color: #F8FAFC;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Noto Sans Bengali', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
-.app-header { background: #101822; backdrop-filter: blur(16px); }
+.workspace-shell {
+  background-image: radial-gradient(ellipse 55rem 29rem at 20% 0%, #122b38 0%, transparent 100%);
+}
+.app-header { background: #101822f5; backdrop-filter: blur(16px); box-shadow: 0 12px 32px #0003; }
 .workspace-nav { gap: .25rem; padding-top: .625rem; padding-bottom: .625rem; }
 .workspace-nav button { font-size: .8125rem; padding: .625rem .875rem; }
+.workspace-shell .bg-surface.rounded-xl {
+  background-image: linear-gradient(155deg, #1b2a3a80, transparent 60%);
+  box-shadow: 0 12px 36px #05081055, inset 0 1px #c4d9ff0a;
+}
+.workspace-shell main h1 { letter-spacing: -.025em; }
+.workspace-shell main h1.text-base { font-size: 1.5rem; line-height: 1.25; }
+.workspace-shell main :is(input, select, textarea) { font-variant-numeric: tabular-nums; }
+.workspace-shell main table { font-variant-numeric: tabular-nums; }
+.rule-card { border-top: 2px solid var(--rule-accent); }
+.rule-card .rule-amount { font-variant-numeric: tabular-nums; }
+@media (max-width: 640px) {
+  .workspace-nav button { padding: .5rem .625rem; }
+  .workspace-shell .bg-surface.rounded-xl.p-6 { padding: 1rem; }
+}
 .arena-intro { padding: 1.5rem 0 1.25rem; }
 .arena-eyebrow { color: #71c5ba; font-size: .6875rem; font-weight: 700; letter-spacing: .14em; }
 .arena-intro h1 { margin: .625rem 0; font-size: clamp(1.75rem, 3vw, 2.5rem); line-height: 1.1; letter-spacing: -.035em; font-weight: 650; }

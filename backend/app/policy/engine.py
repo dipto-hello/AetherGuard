@@ -7,7 +7,9 @@ def evaluate_policy(
     arguments: Dict[str, Any],
     order: Optional[Dict[str, Any]],
     task_scope: Optional[TaskScope],
-    policy_config: Optional[PolicyConfig]
+    policy_config: Optional[PolicyConfig],
+    *,
+    bdt_rate_micros: Optional[int] = None,
 ) -> Tuple[PolicyVerdict, str]:
     """
     Deterministically evaluates an agent tool proposal.
@@ -100,16 +102,24 @@ def evaluate_policy(
             )
 
         # Threshold checks
-        if amount > policy_config.hard_ceiling_threshold:
+        auto_limit = policy_config.auto_allow_threshold
+        hard_limit = policy_config.hard_ceiling_threshold
+        if currency == "BDT":
+            if not bdt_rate_micros or bdt_rate_micros < 0:
+                return PolicyVerdict.BLOCKED, "FAIL_CLOSED: BDT policy rate unavailable"
+            # Round down to the last poisha that is within the USD limit.
+            auto_limit = auto_limit * bdt_rate_micros // 1_000_000
+            hard_limit = hard_limit * bdt_rate_micros // 1_000_000
+        if amount > hard_limit:
             return PolicyVerdict.BLOCKED, (
                 f"POLICY_HARD_CEILING: Amount {amount} exceeds maximum allowed hard ceiling "
-                f"{policy_config.hard_ceiling_threshold}"
+                f"{hard_limit}"
             )
 
-        if amount > policy_config.auto_allow_threshold:
+        if amount > auto_limit:
             return PolicyVerdict.APPROVAL_REQUIRED, (
                 f"APPROVAL_REQUIRED: Amount {amount} exceeds auto-allow threshold "
-                f"{policy_config.auto_allow_threshold}; human operator authorization required"
+                f"{auto_limit}; human operator authorization required"
             )
 
         return PolicyVerdict.ALLOWED, "POLICY_PERMITTED: Action fully conforms to trusted scope and policy thresholds"

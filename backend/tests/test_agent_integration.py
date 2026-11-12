@@ -1,4 +1,7 @@
 import pytest
+
+pytestmark = pytest.mark.usefixtures("stub_ticket_provider")
+
 from datetime import datetime, timedelta, timezone
 from app.sandbox.db import init_db
 from app.sandbox.service import reset_synthetic_data, save_task_scope, get_order
@@ -17,7 +20,7 @@ def test_setup():
     conn.close()
 
 @pytest.mark.asyncio
-async def test_agent_processes_legitimate_english_ticket_auto_allowed(test_setup):
+async def test_agent_processes_legitimate_english_ticket_queued_for_approval(test_setup):
     conn, boundary, agent = test_setup
     scope_ord101 = TaskScope(
         scope_id="scope-en-01",
@@ -37,16 +40,15 @@ async def test_agent_processes_legitimate_english_ticket_auto_allowed(test_setup
     assert trace["language"] == "en"
     assert trace["parsed_parameters"]["order_id"] == "ORD-101"
     assert trace["parsed_parameters"]["amount"] == 4000
-    assert trace["boundary_verdict"] == PolicyVerdict.ALLOWED.value
-    assert trace["executed"] is True
-    assert trace["refund"]["amount"] == 4000
+    assert trace["boundary_verdict"] == PolicyVerdict.APPROVAL_REQUIRED.value
+    assert trace["executed"] is False
 
-    # Physical verification: backend state updated
+    # Balance stays unchanged until approval
     order = get_order(conn, "ORD-101")
-    assert order["refundable_amount"] == 21000
+    assert order["refundable_amount"] == 25000
 
 @pytest.mark.asyncio
-async def test_agent_processes_bengali_ticket_auto_allowed(test_setup):
+async def test_agent_processes_bengali_ticket_queued_for_approval(test_setup):
     conn, boundary, agent = test_setup
     scope_ord103 = TaskScope(
         scope_id="scope-bn-01",
@@ -67,12 +69,12 @@ async def test_agent_processes_bengali_ticket_auto_allowed(test_setup):
     assert trace["parsed_parameters"]["order_id"] == "ORD-103"
     assert trace["parsed_parameters"]["amount"] == 5000  # 5000 poisha = ৳50.00
     assert trace["parsed_parameters"]["currency"] == "BDT"
-    assert trace["boundary_verdict"] == PolicyVerdict.ALLOWED.value
-    assert trace["executed"] is True
+    assert trace["boundary_verdict"] == PolicyVerdict.APPROVAL_REQUIRED.value
+    assert trace["executed"] is False
 
-    # Physical verification: backend state updated
+    # Balance stays unchanged until approval
     order = get_order(conn, "ORD-103")
-    assert order["refundable_amount"] == 495000  # ৳5000 - ৳50 = ৳4950
+    assert order["refundable_amount"] == 500000
 
 @pytest.mark.asyncio
 async def test_agent_processes_moderate_english_ticket_approval_required(test_setup):
@@ -175,6 +177,73 @@ async def test_synthetic_parser_does_not_refund_without_positive_request(test_se
                       allowed_action='refund_order', max_amount=5000, allowed_currency='USD',
                       allowed_destination='card_visa_4242', expires_at=datetime.now(timezone.utc) + timedelta(hours=1))
     save_task_scope(conn, **scope.model_dump(mode='json'))
-    trace = await agent.process_ticket(ticket, scope, force_mode='synthetic')
+    trace = await agent.process_ticket(ticket, scope)
     assert trace['boundary_verdict'] == 'BLOCKED'
     assert get_order(conn, 'ORD-101')['refundable_amount'] == 25000
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("ticket,currency,order_id,destination,initial_balance", [
+    ("Maybe refund $40 for ORD-101 if the customer agrees.", "USD", "ORD-101", "card_visa_4242", 25000),
+    ("গ্রাহক রাজি হলে ORD-103 অর্ডারে ৪০ টাকা রিফান্ড দিন।", "BDT", "ORD-103", "bkash_01711000000", 500000),
+    ("ORD-103-এর ৩০ টাকা refund রিফান্ড না দিন।", "BDT", "ORD-103", "bkash_01711000000", 500000),
+    ("ORD-103-এর ৩০ টাকা রিফান্ড দিতে হবে না।", "BDT", "ORD-103", "bkash_01711000000", 500000),
+])
+async def test_conditional_refund_needs_clarification(
+    test_setup, ticket, currency, order_id, destination, initial_balance
+):
+    conn, _, agent = test_setup
+    scope = TaskScope(
+        scope_id="conditional-refund", operator_id="operator", order_id=order_id,
+        max_amount=5000, allowed_currency=currency, allowed_destination=destination,
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+    )
+    save_task_scope(conn, **scope.model_dump(mode="json"))
+    trace = await agent.process_ticket(
+        ticket, task_scope=scope,
+    )
+    assert trace["boundary_verdict"] == PolicyVerdict.BLOCKED.value
+    assert trace["boundary_reason"].startswith("REFUND_INTENT_UNCLEAR:")
+    assert not trace["executed"]
+    assert get_order(conn, order_id)["refundable_amount"] == initial_balance
+    assert conn.execute("SELECT COUNT(*) FROM refunds").fetchone()[0] == 0
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("message,code", [
+    ("Please refund $40 for order ORD-999.", "REFUND_INTENT_UNCLEAR"),
+    ("Please refund $40 for ORD-101 to card_other_0000.", "DESTINATION_MISMATCH"),
+])
+async def test_live_proposal_must_match_explicit_ticket_details(test_setup, monkeypatch, message, code):
+    conn, _, agent = test_setup
+    scope = TaskScope(scope_id="explicit-details", operator_id="operator", order_id="ORD-101",
+                      max_amount=5000, allowed_currency="USD", allowed_destination="card_visa_4242",
+                      expires_at=datetime.now(timezone.utc) + timedelta(hours=1))
+    save_task_scope(conn, **scope.model_dump(mode="json"))
+    monkeypatch.setattr(agent, "_parse_ticket_llm", lambda *_args, **_kwargs: {
+        "tool": "refund_order", "order_id": "ORD-101", "currency": "USD",
+        "amount": 4000, "destination": "card_visa_4242", "language": "en",
+    })
+    result = await agent.process_ticket(message, task_scope=scope, api_key="test-provider")
+    assert result["boundary_verdict"] == "BLOCKED"
+    assert result["boundary_reason"].startswith(code + ":")
+    assert get_order(conn, "ORD-101")["refundable_amount"] == 25000
+
+
+@pytest.mark.asyncio
+async def test_generated_overdraw_cannot_execute_if_model_shrinks_amount(test_setup, monkeypatch):
+    conn, _, agent = test_setup
+    scope = TaskScope(scope_id="exact-example", operator_id="operator", order_id="ORD-101",
+                      max_amount=25001, allowed_currency="USD", allowed_destination="card_visa_4242",
+                      expires_at=datetime.now(timezone.utc) + timedelta(hours=1))
+    save_task_scope(conn, **scope.model_dump(mode="json"))
+    monkeypatch.setattr(agent, "_parse_ticket_llm", lambda *_args, **_kwargs: {
+        "tool": "refund_order", "order_id": "ORD-101", "currency": "USD",
+        "amount": 4000, "destination": "card_visa_4242", "language": "en",
+    })
+    trace = await agent.process_ticket("Refund $250.01 for ORD-101 to card_visa_4242.",
+                                       task_scope=scope, api_key="test-provider",
+                                       expected_amount=25001)
+    assert trace["boundary_reason"].startswith("REFUND_AMOUNT_MISMATCH:")
+    assert not trace["executed"]
+    assert get_order(conn, "ORD-101")["refundable_amount"] == 25000

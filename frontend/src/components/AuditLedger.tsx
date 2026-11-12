@@ -8,37 +8,39 @@ interface AuditLedgerProps {
 
 export const AuditLedger: React.FC<AuditLedgerProps> = ({ logs }) => {
   return (
-    <div className="bg-surface rounded border border-borderSubtle p-4">
-      <div className="flex items-center justify-between mb-3">
+    <div className="bg-surface rounded-xl border border-borderSubtle p-6 space-y-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
         <div>
-          <h1 className="text-xs font-bold uppercase tracking-wider text-inkPrimary flex items-center gap-1.5">
-            <History className="w-3.5 h-3.5 text-inkMuted" />
-            <span>Governance Audit History</span>
-          </h1>
-          <p className="text-xs text-inkMuted">
-            Recorded governance decisions and fingerprints. This history is not tamper-proof.
+          <div className="flex items-center gap-2 mb-1">
+            <History className="w-5 h-5 text-emerald-400" />
+            <h1 className="text-base font-bold text-white">
+              Activity
+            </h1>
+          </div>
+          <p className="text-sm text-slate-400">
+            Recent refund decisions and demo changes across both currencies.
           </p>
         </div>
-        <span className="text-[10px] font-mono text-inkMuted bg-surfaceCard border border-borderSubtle px-2 py-0.5 rounded">
-          {logs.length} Recorded Events
+        <span className="self-start sm:self-auto text-xs font-mono text-emerald-400 bg-emerald-950/40 border border-emerald-800/60 px-3 py-1 rounded-full font-semibold">
+          {logs.length} events shown
         </span>
       </div>
 
       {logs.length === 0 ? (
-        <div className="text-center py-10 text-inkMuted text-xs font-mono border border-dashed border-borderStrong rounded">
-          No audit records logged yet. Dispatch an action in the Agent Arena.
+        <div className="text-center py-10 text-slate-400 text-xs font-mono border border-dashed border-borderStrong rounded-xl bg-background/40">
+          No activity yet. Run an example in "Test a refund" to see records here.
         </div>
       ) : (
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Recent activity">
           <table className="w-full text-left text-xs font-mono border-collapse">
             <thead>
-              <tr className="border-b border-borderSubtle text-[11px] text-inkMuted">
-                <th className="py-2 px-2.5 font-normal">Timestamp</th>
-                <th className="py-2 px-2.5 font-normal">Action ID</th>
-                <th className="py-2 px-2.5 font-normal">Tool</th>
-                <th className="py-2 px-2.5 font-normal">Verdict</th>
-                <th className="py-2 px-2.5 font-normal">Decision Reason</th>
-                <th className="py-2 px-2.5 font-normal">SHA-256 Hash</th>
+              <tr className="border-b border-borderSubtle text-[11px] text-slate-400">
+                <th className="py-2.5 px-3 font-semibold">Date &amp; Time</th>
+                <th className="py-2.5 px-3 font-semibold">ID</th>
+                <th className="py-2.5 px-3 font-semibold">Action</th>
+                <th className="py-2.5 px-3 font-semibold">Result</th>
+                <th className="py-2.5 px-3 font-semibold">Reason</th>
+                <th className="py-2.5 px-3 font-semibold">Action fingerprint</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-borderSubtle">
@@ -48,36 +50,38 @@ export const AuditLedger: React.FC<AuditLedgerProps> = ({ logs }) => {
                 const isPending = log.verdict === 'APPROVAL_REQUIRED';
 
                 return (
-                  <tr key={log.id} className="hover:bg-surfaceCard/50 transition">
-                    <td className="py-2 px-2.5 text-inkMuted whitespace-nowrap">
+                  <tr key={log.id} className="hover:bg-surfaceCard/60 transition">
+                    <td className="py-2.5 px-3 text-slate-400 whitespace-nowrap">
                       {log.created_at}
                     </td>
-                    <td className="py-2 px-2.5 text-white font-medium whitespace-nowrap">
+                    <td className="py-2.5 px-3 text-white font-bold whitespace-nowrap">
                       {log.action_id}
                     </td>
-                    <td className="py-2 px-2.5 text-slate-300 whitespace-nowrap">
+                    <td className="py-2.5 px-3 text-emerald-400 whitespace-nowrap">
                       {log.tool}
                     </td>
-                    <td className="py-2 px-2.5 whitespace-nowrap">
+                    <td className="py-2.5 px-3 whitespace-nowrap">
                       <span
-                        className={`inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[10px] font-semibold ${
+                        className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold ${
                           isAllowed
-                            ? 'bg-emerald-500/10 text-emerald-400'
+                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
                             : isPending
-                            ? 'bg-amber-500/10 text-amber-400'
-                            : 'bg-red-500/10 text-red-400'
+                            ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                            : isBlocked
+                            ? 'bg-red-500/20 text-red-400 border border-red-500/30'
+                            : 'bg-slate-800 text-slate-300 border border-slate-700'
                         }`}
                       >
-                        {isAllowed && <CheckCircle className="w-3 h-3" />}
-                        {isPending && <Clock className="w-3 h-3" />}
-                        {isBlocked && <AlertOctagon className="w-3 h-3" />}
+                        {isAllowed && <CheckCircle className="w-3 h-3 text-emerald-400" />}
+                        {isPending && <Clock className="w-3 h-3 text-amber-400" />}
+                        {isBlocked && <AlertOctagon className="w-3 h-3 text-red-400" />}
                         <span>{log.verdict}</span>
                       </span>
                     </td>
-                    <td className="py-2 px-2.5 text-slate-300 text-[11px]">
+                    <td className="py-2.5 px-3 text-slate-300 max-w-xs break-words">
                       {log.reason}
                     </td>
-                    <td className="py-2 px-2.5 text-slate-500 text-[10px] truncate max-w-[160px]">
+                    <td className="py-2.5 px-3 text-slate-400 text-[11px] truncate max-w-[150px]">
                       {log.fingerprint || 'N/A'}
                     </td>
                   </tr>

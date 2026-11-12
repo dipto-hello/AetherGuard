@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1096" height="460" viewBox="0 0 1096 460" role="img" aria-labelledby="system-architecture-title system-architecture-desc" id="system-architecture-root">
+<title id="system-architecture-title">System architecture</title>
+<desc id="system-architecture-desc">The console calls FastAPI. The ticket agent consults Gemini and calls the MCP wrapper. Governance and approval share SQLite.</desc>
+<defs>
+      <style>@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&amp;family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500;600&amp;family=Noto+Serif:ital@0;1&amp;family=Noto+Sans+KR:wght@400;500;600&amp;family=Noto+Serif+KR:wght@400&amp;family=Noto+Sans+TC:wght@400;500;600&amp;family=Noto+Serif+TC:wght@400&amp;display=swap');</style><marker id="system-architecture-system-architecture-arrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0L7 3.5L0 7Z" fill="#8b949e"/></marker></defs>
+<rect x="0" y="0" width="1096" height="460" rx="16" fill="#0b0e14"/>
+<text x="32" y="55" fill="#e6edf3" font-family="Instrument Serif, Georgia, serif" font-size="36">System architecture</text>
+<g fill="none" stroke="#8b949e" stroke-width="2" marker-end="url(#system-architecture-system-architecture-arrow)">
+<path d="M248 128H304"/>
+<path d="M520 128H576"/>
+<path d="M792 128H848"/>
+<path d="M684 160V208"/>
+<path d="M576 240H520"/>
+<path d="M412 160V208"/>
+<path d="M344 160V172Q344 180 336 180H280Q272 180 272 188V344Q272 352 280 352H304"/>
+<path d="M520 352H576"/>
+<path d="M480 272V288Q480 296 488 296H652Q660 296 660 304V320"/>
+</g>
+<g font-family="Geist, Arial, sans-serif">
+<g><rect x="32" y="96" width="216" height="64" rx="8" fill="#151b27" stroke="#46556b"/><text x="48" y="123" fill="#e6edf3" font-size="17" font-weight="600">React console</text><text x="48" y="143" fill="#b4bfcc" font-size="13">Operator · browser</text></g>
+<g><rect x="304" y="96" width="216" height="64" rx="8" fill="#151b27" stroke="#46556b"/><text x="320" y="123" fill="#e6edf3" font-size="17" font-weight="600">FastAPI</text><text x="320" y="143" fill="#b4bfcc" font-size="13">Bearer token · REST</text></g>
+<g><rect x="576" y="96" width="216" height="64" rx="8" fill="#151b27" stroke="#46556b"/><text x="592" y="123" fill="#e6edf3" font-size="17" font-weight="600">Ticket agent</text><text x="592" y="143" fill="#b4bfcc" font-size="13">Structured proposal</text></g>
+<g><rect x="848" y="96" width="216" height="64" rx="8" fill="#151b27" stroke="#46556b"/><text x="864" y="123" fill="#e6edf3" font-size="17" font-weight="600">Gemini</text><text x="864" y="143" fill="#b4bfcc" font-size="13">External model</text></g>
+<g><rect x="576" y="208" width="216" height="64" rx="8" fill="#151b27" stroke="#46556b"/><text x="592" y="235" fill="#e6edf3" font-size="17" font-weight="600">MCP tools</text><text x="592" y="255" fill="#b4bfcc" font-size="13">In-process or stdio</text></g>
+<g><rect x="304" y="208" width="216" height="64" rx="8" fill="#102736" stroke="#38bdf8"/><text x="320" y="235" fill="#e6edf3" font-size="17" font-weight="600">Governance boundary</text><text x="320" y="255" fill="#b4bfcc" font-size="13">Scope · policy · retries</text></g>
+<g><rect x="304" y="320" width="216" height="64" rx="8" fill="#151b27" stroke="#46556b"/><text x="320" y="347" fill="#e6edf3" font-size="17" font-weight="600">Approval service</text><text x="320" y="367" fill="#b4bfcc" font-size="13">Fingerprint · recheck</text></g>
+<g><rect x="576" y="320" width="216" height="64" rx="8" fill="#151b27" stroke="#46556b"/><text x="592" y="347" fill="#e6edf3" font-size="17" font-weight="600">SQLite</text><text x="592" y="367" fill="#b4bfcc" font-size="13">Orders · refunds · audit</text></g>
+<path d="M32 416H1064" stroke="#46556b"/>
+<text x="32" y="440" fill="#b4bfcc" font-size="14">Approval and direct governance are authenticated HTTP paths.</text>
+</g>
+</svg>

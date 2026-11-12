@@ -9,6 +9,7 @@ from app.sandbox.service import get_order, execute_sandbox_refund, get_task_scop
 from app.policy.engine import evaluate_policy
 from app.policy.models import PolicyConfig, PolicyVerdict, TaskScope
 from app.policy.storage import load_policy
+from app.sandbox.exchange_rate import get_policy_rate_micros
 
 _DEFAULT_POLICY = object()
 
@@ -67,6 +68,11 @@ def decide_approval(
     if decision not in ["approve", "reject"]:
         raise ApprovalError(f"Decision must be 'approve' or 'reject', got '{decision}'")
 
+    # Prefetch FX before taking the write lock; the action is re-read and verified below.
+    preview = get_pending_action(conn, action_id) if decision == "approve" else None
+    preview_args = preview.get("arguments") if preview and preview["status"] == "pending" else None
+    bdt_rate = get_policy_rate_micros() if isinstance(preview_args, dict) and preview_args.get("currency") == "BDT" else None
+
     with conn:
         if not conn.in_transaction:
             conn.execute("BEGIN IMMEDIATE")
@@ -111,7 +117,8 @@ def decide_approval(
                 if task_scope.is_expired():
                     raise ScopeExpiredError(f"Bound task scope {action['task_scope_id']} has expired")
                 order = get_order(conn, arguments.get("order_id")) if action["tool"] == "refund_order" else None
-                verdict, policy_reason = evaluate_policy(action["tool"], arguments, order, task_scope, policy_config)
+                verdict, policy_reason = evaluate_policy(
+                    action["tool"], arguments, order, task_scope, policy_config, bdt_rate_micros=bdt_rate)
             except ApprovalError:
                 raise
             except Exception as exc:
@@ -211,7 +218,8 @@ def decide_approval(
                     action["tool"],
                     f"Approved by reviewer {reviewer_id}",
                     action["fingerprint"],
-                    json.dumps({"reviewer_id": reviewer_id, "refund": refund})
+                    json.dumps({"reviewer_id": reviewer_id, "refund": refund,
+                                **({"bdt_rate_micros": bdt_rate} if bdt_rate is not None else {})})
                 )
             )
 

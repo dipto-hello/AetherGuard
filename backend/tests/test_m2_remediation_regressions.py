@@ -1,3 +1,4 @@
+from tests.offline_ticket_fixture import OfflineTicketFixture
 """
 Automated Reproduction & Regression Tests for M2 Remediation.
 Proves reproduction of confirmed P0/P1 defects before patching,
@@ -142,7 +143,7 @@ def test_bengali_numerals_normalized_in_order_id():
     conn = init_db(":memory:")
     agent = SupportAgent(GovernanceBoundary(conn))
     try:
-        parsed = agent._parse_ticket_synthetic("আমার অর্ডার ORD-১০৩ এর রিফান্ড ৫০ টাকা দিন")
+        parsed = OfflineTicketFixture()._parse_ticket_synthetic("আমার অর্ডার ORD-১০৩ এর রিফান্ড ৫০ টাকা দিন")
         assert parsed["order_id"] == "ORD-103", f"Expected ORD-103, got {parsed['order_id']}"
         assert parsed["amount"] == 5000, f"Expected 5000, got {parsed['amount']}"
         assert parsed["currency"] == "BDT"
@@ -156,16 +157,16 @@ def test_complaint_phrasing_not_suppressed_by_negation_regex():
     agent = SupportAgent(GovernanceBoundary(conn))
     try:
         # "not happy" complaint should NOT zero the amount
-        parsed1 = agent._parse_ticket_synthetic("I was not happy with order ORD-101, please refund $40")
+        parsed1 = OfflineTicketFixture()._parse_ticket_synthetic("I was not happy with order ORD-101, please refund $40")
         assert parsed1["amount"] == 4000, f"Amount was incorrectly zeroed on complaint: {parsed1['amount']}"
         assert parsed1["order_id"] == "ORD-101"
 
         # "not working" complaint should NOT zero the amount
-        parsed2 = agent._parse_ticket_synthetic("Item was not working for ORD-101, please refund $40 to card_visa_4242")
+        parsed2 = OfflineTicketFixture()._parse_ticket_synthetic("Item was not working for ORD-101, please refund $40 to card_visa_4242")
         assert parsed2["amount"] == 4000, f"Amount was incorrectly zeroed on complaint: {parsed2['amount']}"
 
         # True negation MUST still be zeroed
-        parsed_neg = agent._parse_ticket_synthetic("Please do not refund $40 for order ORD-101")
+        parsed_neg = OfflineTicketFixture()._parse_ticket_synthetic("Please do not refund $40 for order ORD-101")
         assert parsed_neg["amount"] == 0, f"True negation was not zeroed: {parsed_neg['amount']}"
     finally:
         conn.close()

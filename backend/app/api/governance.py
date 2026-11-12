@@ -7,7 +7,7 @@ import uuid
 import json
 
 from app.sandbox.db import get_connection
-from app.sandbox.service import save_task_scope, get_task_scope, DuplicateIdempotencyError
+from app.sandbox.service import save_task_scope, get_task_scope, get_order, DuplicateIdempotencyError
 from app.policy.storage import load_policy, save_policy
 from app.policy.models import TaskScope, PolicyConfig, PolicyVerdict
 from app.governance.boundary import GovernanceBoundary
@@ -39,8 +39,8 @@ class InterceptActionRequest(BaseModel):
     idempotency_key: str = Field(..., min_length=1, max_length=128, pattern=r'.*\S.*', description="Stable key for this request")
 
 class UpdatePolicyRequest(BaseModel):
-    auto_allow_threshold: Optional[int] = Field(None, gt=0, description="Auto-allow threshold in minor units")
-    hard_ceiling_threshold: Optional[int] = Field(None, gt=0, description="Hard ceiling threshold in minor units")
+    auto_allow_threshold: Optional[int] = Field(None, gt=0, description="Auto-allow threshold in USD cents")
+    hard_ceiling_threshold: Optional[int] = Field(None, gt=0, description="Hard ceiling threshold in USD cents")
     allowed_tools: Optional[List[str]] = Field(None, description="List of allowed tool names")
 
 class DecideApprovalRequest(BaseModel):
@@ -53,6 +53,14 @@ async def create_task_scope_endpoint(req: CreateScopeRequest):
     """Create an immutable, operator-bounded trusted task scope."""
     conn = get_connection()
     try:
+        if req.allowed_action == "refund_order":
+            order = get_order(conn, req.order_id)
+            if order is None:
+                raise HTTPException(404, detail={"code": "ORDER_NOT_FOUND", "message": "This order was not found. Check the order ID in Order balances."})
+            if order["currency"] != req.allowed_currency:
+                raise HTTPException(422, detail={"code": "CURRENCY_MISMATCH", "message": f"This order uses {order['currency']}. Switch to that currency before running the ticket."})
+            if order["original_destination"] != req.allowed_destination:
+                raise HTTPException(422, detail={"code": "DESTINATION_MISMATCH", "message": "Payment destination does not match this order. Check the account in Order balances."})
         scope_id = f"scope_{uuid.uuid4().hex[:10]}"
         expires_at = (datetime.now(timezone.utc) + timedelta(hours=req.expires_in_hours)).isoformat()
         scope = save_task_scope(
@@ -83,7 +91,7 @@ async def get_task_scope_endpoint(scope_id: str):
         conn.close()
 
 @router.post("/evaluate")
-async def intercept_and_evaluate_endpoint(req: InterceptActionRequest):
+def intercept_and_evaluate_endpoint(req: InterceptActionRequest):
     """
     Core Execution Firewall Interceptor:
     Takes an incoming agent tool request, verifies trusted scope, checks policy,
@@ -174,7 +182,7 @@ async def get_pending_approvals():
         conn.close()
 
 @router.post("/approvals/{action_id}/decide")
-async def decide_approval_endpoint(action_id: str, req: DecideApprovalRequest):
+def decide_approval_endpoint(action_id: str, req: DecideApprovalRequest):
     """
     Authorized human review of a pending action.
     Single-use, parameter-bound, anti-replay, and concurrent execution protected.

@@ -55,7 +55,7 @@ export interface AuditEvent {
   id: string;
   action_id: string;
   tool: string;
-  verdict: 'ALLOWED' | 'APPROVAL_REQUIRED' | 'BLOCKED' | 'APPROVED' | 'REJECTED';
+  verdict: 'ALLOWED' | 'APPROVAL_REQUIRED' | 'BLOCKED' | 'APPROVED' | 'REJECTED' | 'ORDER_BALANCE_UPDATED' | 'POLICY_UPDATED' | 'SANDBOX_RESET';
   reason: string;
   fingerprint: string;
   details: string;

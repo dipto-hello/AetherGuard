@@ -179,3 +179,17 @@ def test_api_approval_flow_via_rest():
     })
     assert replay_res.status_code == 409
     assert replay_res.json()["detail"]["code"] == "ALREADY_PROCESSED"
+
+
+@pytest.mark.parametrize("change, status, code", [
+    ({"order_id": "ORD-999"}, 404, "ORDER_NOT_FOUND"),
+    ({"allowed_currency": "BDT"}, 422, "CURRENCY_MISMATCH"),
+    ({"allowed_destination": "card_other_0000"}, 422, "DESTINATION_MISMATCH"),
+])
+def test_scope_rejects_invalid_order_permission(change, status, code):
+    payload = {"operator_id": "demo_operator", "order_id": "ORD-101",
+               "max_amount": 5000, "allowed_currency": "USD",
+               "allowed_destination": "card_visa_4242"}
+    response = client.post("/api/governance/scopes", json={**payload, **change})
+    assert response.status_code == status
+    assert response.json()["detail"]["code"] == code

@@ -11,7 +11,7 @@ async def get_all_evaluation_cases():
     return {"cases": EVALUATION_CASES}
 
 @router.post("/run")
-async def trigger_full_evaluation():
+def trigger_full_evaluation():
     """
     Execute the automated 10-case evaluation matrix and return physical execution results.
     """

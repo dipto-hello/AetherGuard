@@ -11,172 +11,148 @@ export const EvaluationMatrix: React.FC = () => {
   const handleRunEvaluation = async () => {
     setIsRunning(true);
     setErrorMsg(null);
+    setReport(null);
     try {
       const res = await runEvaluationSuite();
       setReport(res);
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Failed to execute evaluation suite');
+    } catch {
+      setErrorMsg('Could not finish the tests. Try again.');
     } finally {
       setIsRunning(false);
     }
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       {/* Top Banner & Trigger */}
-      <div className="bg-surface rounded border border-borderSubtle p-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="bg-surface rounded-xl border border-borderSubtle p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <div className="flex items-center gap-1.5 mb-1">
-              <Award className="w-4 h-4 text-inkMuted" />
-              <h1 className="text-xs font-bold uppercase tracking-wider text-inkPrimary">
-                10-Case Adversarial &amp; Legitimate Benchmark Suite
+            <div className="flex items-center gap-2 mb-1">
+              <Award className="w-5 h-5 text-emerald-400" />
+              <h1 className="text-base font-bold text-white">
+                Refund rule tests
               </h1>
             </div>
-            <p className="text-xs text-inkMuted">
-              Deterministic boundary cases using synthetic actions. This suite does not test a live model or prompt injection.
+            <p className="text-sm text-slate-400">
+              Runs USD and BDT test cases with the default refund rules. Your demo orders stay as they are.
             </p>
           </div>
 
           <button
             onClick={handleRunEvaluation}
             disabled={isRunning}
-            className="px-4 py-2 rounded bg-inkPrimary hover:bg-white text-slate-950 font-semibold text-xs flex items-center gap-2 transition disabled:opacity-50 shrink-0"
+            className="px-5 py-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-2 transition disabled:opacity-50 shrink-0 shadow-sm"
           >
             {isRunning ? (
               <>
-                <Zap className="w-3.5 h-3.5 animate-spin" />
-                <span>Running boundary cases...</span>
+                <Zap className="w-4 h-4 animate-spin text-slate-950" />
+                <span>Running tests…</span>
               </>
             ) : (
               <>
-                <Play className="w-3.5 h-3.5 fill-current" />
-                <span>Run boundary cases</span>
+                <Play className="w-4 h-4 fill-current" />
+                <span>Run tests</span>
               </>
             )}
           </button>
         </div>
 
         {errorMsg && (
-          <div role="alert" aria-live="assertive" className="p-3 mt-3 rounded bg-red-950/20 border border-red-800/40 text-xs text-red-300 flex items-center gap-2 font-mono">
-            <AlertTriangle className="w-4 h-4 shrink-0" />
+          <div role="alert" aria-live="assertive" className="p-3 mt-4 rounded-lg bg-red-950/40 border border-red-800/60 text-xs text-red-300 flex items-center gap-2 font-mono">
+            <AlertTriangle className="w-4 h-4 shrink-0 text-red-400" />
             <span>{errorMsg}</span>
           </div>
         )}
       </div>
 
-      {/* Metrics Row - Quiet Type Over Tiles */}
       {report && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <div className="p-3.5 rounded bg-surface border border-borderSubtle">
-            <span className="text-[11px] font-mono text-inkMuted block mb-0.5">Policy Decision Accuracy</span>
-            <div className="text-2xl font-mono font-semibold text-emerald-400">
-              {report.accuracy_percent}%
+        <dl className="grid grid-cols-2 lg:grid-cols-4 gap-4" aria-live="polite">
+          {[
+            ['Cases passed', `${report.passed_cases} / ${report.total_cases}`],
+            ['Unexpected balance changes', report.unauthorized_backend_writes ?? 'Not measured'],
+            ['Valid requests blocked', report.false_positive_rate == null ? 'Not measured' : `${report.false_positive_rate}%`],
+            ['Unsafe cases with the wrong decision', report.false_negative_rate == null ? 'Not measured' : `${report.false_negative_rate}%`],
+          ].map(([label, value]) => (
+            <div key={label} className="p-4 rounded-xl bg-surface border border-borderSubtle space-y-1">
+              <dt className="text-xs text-slate-400">{label}</dt>
+              <dd className="text-lg font-mono font-bold text-white">{value}</dd>
             </div>
-            <div className="text-[10px] text-slate-500 font-mono mt-1">
-              {report.passed_cases}/{report.total_cases} cases passed
-            </div>
-          </div>
-
-          <div className="p-3.5 rounded bg-surface border border-borderSubtle">
-            <span className="text-[11px] font-mono text-inkMuted block mb-0.5">Unauthorized Backend Writes</span>
-            <div className="text-2xl font-mono font-semibold text-emerald-400">
-              {report.unauthorized_backend_writes ?? 'N/A'}
-            </div>
-            <div className="text-[10px] text-slate-500 font-mono mt-1">
-              Cases with unexpected observed changes
-            </div>
-          </div>
-
-          <div className="p-3.5 rounded bg-surface border border-borderSubtle">
-            <span className="text-[11px] font-mono text-inkMuted block mb-0.5">False Positive Rate</span>
-            <div className="text-2xl font-mono font-semibold text-white">
-              {report.false_positive_rate == null ? 'N/A' : `${report.false_positive_rate}%`}
-            </div>
-            <div className="text-[10px] text-slate-500 font-mono mt-1">
-              Among classified legitimate cases
-            </div>
-          </div>
-
-          <div className="p-3.5 rounded bg-surface border border-borderSubtle">
-            <span className="text-[11px] font-mono text-inkMuted block mb-0.5">Adversarial cases not hard-blocked</span>
-            <div className="text-2xl font-mono font-semibold text-white">
-              {report.false_negative_rate == null ? 'N/A' : `${report.false_negative_rate}%`}
-            </div>
-            <div className="text-[10px] text-slate-500 font-mono mt-1">
-              Includes decisions held for approval
-            </div>
-          </div>
-        </div>
+          ))}
+        </dl>
       )}
 
-      {/* Benchmark Cases Table - Quiet Lines, Sentence Case, Right-aligned Numbers */}
+      {/* Benchmark Cases Table */}
       {report && (
-        <div className="bg-surface rounded border border-borderSubtle p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-xs font-semibold text-inkPrimary">
-              Benchmark Trajectory Execution Breakdown
+        <div className="bg-surface rounded-xl border border-borderSubtle p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-bold text-white">
+              Results by test
             </h3>
-            <span className="text-[10px] font-mono text-inkMuted">
-              Execution timestamp: {report.timestamp}
+            <span className="text-xs font-mono text-slate-400">
+              Timestamp: {report.timestamp}
             </span>
           </div>
 
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Refund test details">
             <table className="w-full text-left text-xs font-mono border-collapse">
               <thead>
-                <tr className="border-b border-borderSubtle text-[11px] text-inkMuted">
-                  <th className="py-2 px-2.5 font-normal">Case</th>
-                  <th className="py-2 px-2.5 font-normal">Scenario Name &amp; Invariant</th>
-                  <th className="py-2 px-2.5 font-normal">Category</th>
-                  <th className="py-2 px-2.5 font-normal">Expected</th>
-                  <th className="py-2 px-2.5 font-normal">Actual Decision</th>
-                  <th className="py-2 px-2.5 font-normal">Expected / actual effect</th>
-                  <th className="py-2 px-2.5 font-normal text-right">Latency</th>
-                  <th className="py-2 px-2.5 font-normal text-right">Verification</th>
+                <tr className="border-b border-borderSubtle text-[11px] text-slate-400">
+                  <th className="py-2.5 px-3 font-semibold">Case</th>
+                  <th className="py-2.5 px-3 font-semibold">Example request</th>
+                  <th className="py-2.5 px-3 font-semibold">Category</th>
+                  <th className="py-2.5 px-3 font-semibold">Expected</th>
+                  <th className="py-2.5 px-3 font-semibold">Decision</th>
+                  <th className="py-2.5 px-3 font-semibold">Order balance change</th>
+                  <th className="py-2.5 px-3 font-semibold text-right">Case time</th>
+                  <th className="py-2.5 px-3 font-semibold text-right">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-borderSubtle">
                 {report.cases.map((c) => {
                   const isPassed = c.status === 'PASSED';
                   return (
-                    <tr key={c.case_id} className="hover:bg-surfaceCard/50 transition">
-                      <td className="py-2.5 px-2.5 font-semibold text-white whitespace-nowrap">
+                    <tr key={c.case_id} className="hover:bg-surfaceCard/60 transition">
+                      <td className="py-2.5 px-3 font-bold text-white whitespace-nowrap">
                         {c.case_id}
                       </td>
-                      <td className="py-2.5 px-2.5">
-                        <div className="font-medium text-slate-200">{c.name}</div>
-                        <div className="text-[10px] text-inkMuted line-clamp-1">{c.description}</div>
+                      <td className="py-2.5 px-3">
+                        <div className="font-semibold text-slate-200">{c.name}</div>
+                        <div className="text-[11px] text-slate-400">{c.description}</div>
+                        <div className="text-[11px] text-slate-400">{c.reason}</div>
                       </td>
-                      <td className="py-2.5 px-2.5 text-inkMuted">
+                      <td className="py-2.5 px-3 text-slate-400">
                         {c.category}
                       </td>
-                      <td className="py-2.5 px-2.5 text-slate-400">
+                      <td className="py-2.5 px-3 text-slate-400">
                         {c.expected_verdict}
                       </td>
-                      <td className="py-2.5 px-2.5">
+                      <td className="py-2.5 px-3">
                         <span
-                          className={`px-1.5 py-0.2 rounded text-[10px] font-semibold ${
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                             c.actual_verdict === 'ALLOWED'
-                              ? 'bg-emerald-500/10 text-emerald-400'
+                              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
                               : c.actual_verdict === 'APPROVAL_REQUIRED'
-                              ? 'bg-amber-500/10 text-amber-400'
-                              : 'bg-red-500/10 text-red-400'
+                              ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                              : 'bg-red-500/20 text-red-400 border border-red-500/30'
                           }`}
                         >
                           {c.actual_verdict}
                         </span>
                       </td>
-                      <td className="py-2.5 px-2.5 text-inkMuted">{c.expected_backend_effect} / {c.actual_backend_effect}</td>
-                      <td className="py-2.5 px-2.5 text-right tabular-nums text-inkMuted">
+                      <td className="py-2.5 px-3">
+                        <div>{c.actual_backend_effect}</div>
+                        <div className="text-slate-400">Expected {c.expected_backend_effect}</div>
+                      </td>
+                      <td className="py-2.5 px-3 text-right tabular-nums text-slate-400">
                         {c.latency_ms.toFixed(1)}ms
                       </td>
-                      <td className="py-2.5 px-2.5 text-right">
+                      <td className="py-2.5 px-3 text-right">
                         <span
-                          className={`px-1.5 py-0.2 rounded text-[10px] font-bold ${
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                             isPassed
-                              ? 'text-emerald-400 bg-emerald-500/10'
-                              : 'text-red-400 bg-red-500/10'
+                              ? 'text-emerald-400 bg-emerald-500/20 border border-emerald-500/40'
+                              : 'text-red-400 bg-red-500/20 border border-red-500/40'
                           }`}
                         >
                           {c.status}

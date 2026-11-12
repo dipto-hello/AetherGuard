@@ -1,3 +1,4 @@
+from tests.offline_ticket_fixture import OfflineTicketFixture
 """
 Negative & Positive Regression Tests: Agent Trace Data Minimization & Pre-Scope Protection.
 Strictly verifies that:
@@ -10,6 +11,9 @@ Strictly verifies that:
 """
 import json
 import pytest
+
+pytestmark = pytest.mark.usefixtures("stub_ticket_provider")
+
 from types import SimpleNamespace
 from datetime import datetime, timedelta, timezone
 
@@ -64,7 +68,7 @@ async def test_no_scope_without_destination_blocks_and_zero_db_reads(agent_env, 
     conn, agent = agent_env
     ticket_text = "Please refund $40 for order ORD-101"
 
-    trace = await agent.process_ticket(ticket_text, task_scope=None, force_mode="synthetic")
+    trace = await agent.process_ticket(ticket_text, task_scope=None)
 
     # Rejection verification
     assert trace["boundary_verdict"] == PolicyVerdict.BLOCKED.value
@@ -93,7 +97,7 @@ async def test_no_scope_with_explicit_destination_blocks_and_zero_db_reads(agent
     conn, agent = agent_env
     ticket_text = "Please refund $40 for order ORD-101 to card_visa_4242"
 
-    trace = await agent.process_ticket(ticket_text, task_scope=None, force_mode="synthetic")
+    trace = await agent.process_ticket(ticket_text, task_scope=None)
 
     assert trace["boundary_verdict"] == PolicyVerdict.BLOCKED.value
     assert trace["executed"] is False
@@ -134,7 +138,7 @@ async def test_expired_scope_without_destination_blocks_and_zero_db_reads(agent_
     save_task_scope(conn, **expired_scope.model_dump(mode="json"))
 
     ticket_text = "Late delivery refund $40 for ORD-101"
-    trace = await agent.process_ticket(ticket_text, task_scope=expired_scope, force_mode="synthetic")
+    trace = await agent.process_ticket(ticket_text, task_scope=expired_scope)
 
     assert trace["boundary_verdict"] == PolicyVerdict.BLOCKED.value
     assert trace["executed"] is False
@@ -166,7 +170,7 @@ async def test_expired_scope_with_destination_blocks_and_zero_db_reads(agent_env
     save_task_scope(conn, **expired_scope.model_dump(mode="json"))
 
     ticket_text = "Late delivery refund $40 for ORD-101 to card_visa_4242"
-    trace = await agent.process_ticket(ticket_text, task_scope=expired_scope, force_mode="synthetic")
+    trace = await agent.process_ticket(ticket_text, task_scope=expired_scope)
 
     assert trace["boundary_verdict"] == PolicyVerdict.BLOCKED.value
     assert trace["executed"] is False
@@ -205,7 +209,7 @@ async def test_cross_order_without_destination_blocks_and_zero_db_reads(agent_en
     save_task_scope(conn, **scope_ord101.model_dump(mode="json"))
 
     ticket_text = "Please refund $40 for order ORD-104"
-    trace = await agent.process_ticket(ticket_text, task_scope=scope_ord101, force_mode="synthetic")
+    trace = await agent.process_ticket(ticket_text, task_scope=scope_ord101)
 
     assert trace["boundary_verdict"] == PolicyVerdict.BLOCKED.value
     assert trace["executed"] is False
@@ -237,7 +241,7 @@ async def test_cross_order_with_destination_blocks_and_zero_db_reads(agent_env, 
     save_task_scope(conn, **scope_ord101.model_dump(mode="json"))
 
     ticket_text = "Refund $40 for ORD-104 to wire_swift_chase"
-    trace = await agent.process_ticket(ticket_text, task_scope=scope_ord101, force_mode="synthetic")
+    trace = await agent.process_ticket(ticket_text, task_scope=scope_ord101)
 
     assert trace["boundary_verdict"] == PolicyVerdict.BLOCKED.value
     assert trace["executed"] is False
@@ -275,7 +279,7 @@ async def test_unpersisted_scope_without_destination_blocks_and_zero_db_reads(ag
     # Notice: save_task_scope is NOT called! Scope does not exist in SQLite table.
 
     ticket_text = "Please refund $40 for order ORD-101"
-    trace = await agent.process_ticket(ticket_text, task_scope=unpersisted_scope, force_mode="synthetic")
+    trace = await agent.process_ticket(ticket_text, task_scope=unpersisted_scope)
 
     assert trace["boundary_verdict"] == PolicyVerdict.BLOCKED.value
     assert trace["executed"] is False
@@ -312,12 +316,12 @@ async def test_authorized_ticket_without_destination_enriches_authoritatively(ag
     save_task_scope(conn, **scope_ord101.model_dump(mode="json"))
 
     ticket_text = "Please refund $40 for order ORD-101"
-    trace = await agent.process_ticket(ticket_text, task_scope=scope_ord101, force_mode="synthetic")
+    trace = await agent.process_ticket(ticket_text, task_scope=scope_ord101)
 
     # 1. Success verification
-    assert trace["boundary_verdict"] == PolicyVerdict.ALLOWED.value
-    assert trace["executed"] is True
-    assert trace["refund"]["amount"] == 4000
+    assert trace["boundary_verdict"] == PolicyVerdict.APPROVAL_REQUIRED.value
+    assert trace["executed"] is False
+    assert trace["refund"] is None
 
     # 2. Authoritative destination enrichment verification
     assert trace["parsed_parameters"]["destination"] == "card_visa_4242"
@@ -329,8 +333,8 @@ async def test_authorized_ticket_without_destination_enriches_authoritatively(ag
     assert len(spy_get_order) == 1, f"Expected exactly 1 authorized read, got {len(spy_get_order)}"
     assert spy_get_order[0] == "ORD-101"
 
-    # 4. Sandbox database mutated correctly
-    assert get_order(conn, "ORD-101")["refundable_amount"] == 21000
+    # 4. Balance remains unchanged before approval.
+    assert get_order(conn, "ORD-101")["refundable_amount"] == 25000
 
 
 @pytest.mark.asyncio
@@ -354,11 +358,11 @@ async def test_authorized_ticket_with_destination_preserves_workflow_with_minimi
     save_task_scope(conn, **scope_ord101.model_dump(mode="json"))
 
     ticket_text = "Refund $40 for ORD-101 to card_visa_4242"
-    trace = await agent.process_ticket(ticket_text, task_scope=scope_ord101, force_mode="synthetic")
+    trace = await agent.process_ticket(ticket_text, task_scope=scope_ord101)
 
-    assert trace["boundary_verdict"] == PolicyVerdict.ALLOWED.value
-    assert trace["executed"] is True
-    assert trace["refund"]["amount"] == 4000
+    assert trace["boundary_verdict"] == PolicyVerdict.APPROVAL_REQUIRED.value
+    assert trace["executed"] is False
+    assert trace["refund"] is None
     assert trace["parsed_parameters"]["destination"] == "card_visa_4242"
     assert trace["order_state"]["masked_destination"] == "card...4242"
 
@@ -389,7 +393,7 @@ async def test_llm_generic_destination_without_scope_zero_db_reads(agent_env, mo
                         "order_id": "ORD-101",
                         "currency": "USD",
                         "amount_minor": 4000,
-                        "destination": "original payment card"
+                        "destination": "original_payment_method"
                     }
                 )
             ]
@@ -412,7 +416,7 @@ async def test_llm_generic_destination_without_scope_zero_db_reads(agent_env, mo
 
 
 @pytest.mark.asyncio
-async def test_llm_generic_destination_with_authorized_scope_enriches_and_allows(agent_env, monkeypatch, spy_get_order):
+async def test_llm_generic_destination_with_authorized_scope_enriches_and_queues(agent_env, monkeypatch, spy_get_order):
     """
     LLM proposes a generic destination ('original payment card').
     When a valid scope is authorized, agent must verify scope first, enrich destination,
@@ -443,7 +447,7 @@ async def test_llm_generic_destination_with_authorized_scope_enriches_and_allows
                         "order_id": "ORD-101",
                         "currency": "USD",
                         "amount_minor": 4000,
-                        "destination": "original payment card"
+                        "destination": "original_payment_method"
                     }
                 )
             ]
@@ -456,15 +460,14 @@ async def test_llm_generic_destination_with_authorized_scope_enriches_and_allows
     ticket_text = "Refund $40 for ORD-101 to original card"
     trace = await agent.process_ticket(ticket_text, task_scope=scope_ord101, api_key="mock_key")
 
-    assert trace["boundary_verdict"] == PolicyVerdict.ALLOWED.value
-    assert trace["executed"] is True
-    assert trace["refund"]["amount"] == 4000
+    assert trace["boundary_verdict"] == PolicyVerdict.APPROVAL_REQUIRED.value
+    assert trace["executed"] is False
     assert trace["parsed_parameters"]["destination"] == "card_visa_4242"
     assert trace["order_state"]["masked_destination"] == "card...4242"
 
     assert len(spy_get_order) == 1, f"Expected exactly 1 authorized read, got {len(spy_get_order)}"
     assert spy_get_order[0] == "ORD-101"
-    assert get_order(conn, "ORD-101")["refundable_amount"] == 21000
+    assert get_order(conn, "ORD-101")["refundable_amount"] == 25000
 
 
 @pytest.mark.asyncio
@@ -498,7 +501,7 @@ async def test_llm_bengali_generic_destination_with_authorized_scope(agent_env, 
                         "order_id": "ORD-103",
                         "currency": "BDT",
                         "amount_minor": 5000,
-                        "destination": "আগের বিকাশ একাউন্টে"
+                        "destination": "original_payment_method"
                     }
                 )
             ]
@@ -511,8 +514,8 @@ async def test_llm_bengali_generic_destination_with_authorized_scope(agent_env, 
     ticket_text = "ORD-103 ৫০ টাকা রিফান্ড দিন"
     trace = await agent.process_ticket(ticket_text, task_scope=scope_ord103, api_key="mock_key")
 
-    assert trace["boundary_verdict"] == PolicyVerdict.ALLOWED.value
-    assert trace["executed"] is True
+    assert trace["boundary_verdict"] == PolicyVerdict.APPROVAL_REQUIRED.value
+    assert trace["executed"] is False
     assert trace["parsed_parameters"]["destination"] == "bkash_01711000000"
     assert trace["order_state"]["masked_destination"] == "bkas...0000"
 
@@ -533,21 +536,21 @@ def test_parser_methods_never_call_get_order_directly(agent_env, monkeypatch, sp
     conn, agent = agent_env
 
     # 1. Synthetic English ticket without destination
-    p1 = agent._parse_ticket_synthetic("Please refund $40 for order ORD-101")
+    p1 = OfflineTicketFixture()._parse_ticket_synthetic("Please refund $40 for order ORD-101")
     assert p1["order_id"] == "ORD-101"
     assert p1["amount"] == 4000
     assert p1["destination"] is None
     assert len(spy_get_order) == 0
 
     # 2. Synthetic Bengali ticket without destination
-    p2 = agent._parse_ticket_synthetic("আমার অর্ডার ORD-103 এর রিফান্ড ৫০ টাকা দিন")
+    p2 = OfflineTicketFixture()._parse_ticket_synthetic("আমার অর্ডার ORD-103 এর রিফান্ড ৫০ টাকা দিন")
     assert p2["order_id"] == "ORD-103"
     assert p2["amount"] == 5000
     assert p2["destination"] is None
     assert len(spy_get_order) == 0
 
     # 3. Synthetic ticket with generic destination text
-    p3 = agent._parse_ticket_synthetic("Please refund $40 for order ORD-101 to my card")
+    p3 = OfflineTicketFixture()._parse_ticket_synthetic("Please refund $40 for order ORD-101 to my card")
     assert p3["destination"] is None
     assert len(spy_get_order) == 0
 
@@ -561,7 +564,7 @@ def test_parser_methods_never_call_get_order_directly(agent_env, monkeypatch, sp
                         "order_id": "ORD-101",
                         "currency": "USD",
                         "amount_minor": 4000,
-                        "destination": "original payment card"
+                        "destination": "original_payment_method"
                     }
                 )
             ]

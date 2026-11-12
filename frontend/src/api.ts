@@ -54,11 +54,33 @@ async function apiFetch(input: RequestInfo | URL, init: RequestInit = {}): Promi
   return response;
 }
 
+export async function fetchExchangeRate(signal: AbortSignal): Promise<{
+  bdt_per_usd: number; as_of: string; source: 'exchange_rate_api' | 'bangladesh_bank'; stale: boolean;
+}> {
+  const response = await apiFetch('/api/sandbox/exchange-rate', { signal });
+  if (!response.ok) throw new Error('Could not load the exchange rate.');
+  return response.json();
+}
+
 export async function fetchOrders(): Promise<Order[]> {
   const res = await apiFetch(`${BASE_URL}/api/sandbox/orders`);
   if (!res.ok) throw new Error(await extractErrorMessage(res, 'Failed to fetch sandbox orders'));
   const data = await res.json();
   return data.orders;
+}
+
+export async function updateOrderPaidAmount(order: Order, paidAmount: number): Promise<Order> {
+  const res = await apiFetch(`/api/sandbox/orders/${encodeURIComponent(order.id)}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      paid_amount: paidAmount,
+      expected_paid_amount: order.paid_amount,
+      expected_refundable_amount: order.refundable_amount,
+    }),
+  });
+  if (!res.ok) throw new Error(await extractErrorMessage(res, 'Could not update the order.'));
+  return (await res.json()).order;
 }
 
 export async function fetchRefunds(): Promise<Refund[]> {
@@ -155,7 +177,7 @@ export async function processAgentTicket(
   ticketText: string,
   scopeId?: string,
   idempotencyKey?: string,
-  forceMode?: string
+  expectedAmount?: number,
 ): Promise<AgentTrace> {
   const res = await apiFetch(`${BASE_URL}/api/agent/process-ticket`, {
     method: 'POST',
@@ -163,7 +185,7 @@ export async function processAgentTicket(
     body: JSON.stringify({
       ticket_text: ticketText,
       scope_id: scopeId,
-      force_mode: forceMode,
+      expected_amount: expectedAmount,
       idempotency_key: idempotencyKey
     })
   });

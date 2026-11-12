@@ -76,3 +76,12 @@ tmp/
 Thumbs.db
 .vscode/
 .idea/
+
+# SQLite sidecars and local tool caches
+*.db-journal
+*.sqlite-journal
+*.sqlite3-wal
+*.sqlite3-shm
+*.sqlite3-journal
+*.tsbuildinfo
+.ruff_cache/

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1096" height="460" viewBox="0 0 1096 460" role="img" aria-labelledby="agent-execution-title agent-execution-desc" id="agent-execution-root">
+<title id="agent-execution-title">Agent execution flow</title>
+<desc id="agent-execution-desc">The operator creates scope. The agent requests a model proposal. The MCP wrapper checks authorization before policy. Ticket refunds require human review.</desc>
+<defs>
+      <style>@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&amp;family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500;600&amp;family=Noto+Serif:ital@0;1&amp;family=Noto+Sans+KR:wght@400;500;600&amp;family=Noto+Serif+KR:wght@400&amp;family=Noto+Sans+TC:wght@400;500;600&amp;family=Noto+Serif+TC:wght@400&amp;display=swap');</style><marker id="agent-execution-agent-execution-arrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0L7 3.5L0 7Z" fill="#8b949e"/></marker></defs>
+<rect x="0" y="0" width="1096" height="460" rx="16" fill="#0b0e14"/>
+<text x="32" y="55" fill="#e6edf3" font-family="Instrument Serif, Georgia, serif" font-size="36">Agent execution flow</text>
+<g fill="none" stroke="#8b949e" stroke-width="2" marker-end="url(#agent-execution-agent-execution-arrow)">
+<path d="M248 128H304"/>
+<path d="M520 128H576"/>
+<path d="M792 128H848"/>
+<path d="M956 160V216"/>
+<path d="M912 160V180Q912 188 904 188H700Q692 188 692 196V216"/>
+<path d="M872 160V164Q872 172 864 172H420Q412 172 412 180V216"/>
+<path d="M412 280V360Q412 368 420 368H576"/>
+<path d="M956 280V360Q956 368 948 368H792"/>
+</g>
+<g font-family="Geist, Arial, sans-serif">
+<g><rect x="32" y="96" width="216" height="64" rx="8" fill="#151b27" stroke="#46556b"/><text x="48" y="123" fill="#e6edf3" font-size="17" font-weight="600">Operator request</text><text x="48" y="143" fill="#b4bfcc" font-size="13">Persist task scope</text></g>
+<g><rect x="304" y="96" width="216" height="64" rx="8" fill="#151b27" stroke="#46556b"/><text x="320" y="123" fill="#e6edf3" font-size="17" font-weight="600">Agent proposal</text><text x="320" y="143" fill="#b4bfcc" font-size="13">Gemini · check proposal</text></g>
+<g><rect x="576" y="96" width="216" height="64" rx="8" fill="#151b27" stroke="#46556b"/><text x="592" y="123" fill="#e6edf3" font-size="17" font-weight="600">MCP authorization</text><text x="592" y="143" fill="#b4bfcc" font-size="13">Caller · order scope</text></g>
+<g><rect x="848" y="96" width="216" height="64" rx="8" fill="#102736" stroke="#38bdf8"/><text x="864" y="123" fill="#e6edf3" font-size="17" font-weight="600">Policy decision</text><text x="864" y="143" fill="#b4bfcc" font-size="13">Record verdict in SQLite</text></g>
+<g><rect x="576" y="216" width="216" height="64" rx="8" fill="#151b27" stroke="#46556b"/><text x="592" y="243" fill="#e6edf3" font-size="17" font-weight="600">Blocked</text><text x="592" y="263" fill="#b4bfcc" font-size="13">No refund</text></g>
+<g><rect x="848" y="216" width="216" height="64" rx="8" fill="#102736" stroke="#38bdf8"/><text x="864" y="243" fill="#e6edf3" font-size="17" font-weight="600">Human approval</text><text x="864" y="263" fill="#b4bfcc" font-size="13">Always for tickets</text></g>
+<g><rect x="304" y="216" width="216" height="64" rx="8" fill="#151b27" stroke="#46556b"/><text x="320" y="243" fill="#e6edf3" font-size="17" font-weight="600">Allowed</text><text x="320" y="263" fill="#b4bfcc" font-size="13">Eligible direct requests</text></g>
+<g><rect x="576" y="336" width="216" height="64" rx="8" fill="#151b27" stroke="#46556b"/><text x="592" y="363" fill="#e6edf3" font-size="17" font-weight="600">Synthetic execution</text><text x="592" y="383" fill="#b4bfcc" font-size="13">Ledger update · audit</text></g>
+<path d="M32 416H1064" stroke="#46556b"/>
+<text x="32" y="440" fill="#b4bfcc" font-size="14">MCP may deny a request before the policy verdict transaction.</text>
+</g>
+</svg>

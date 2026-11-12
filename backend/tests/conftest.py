@@ -10,6 +10,24 @@ os.environ["AETHERGUARD_OPERATOR_TOKEN"] = "test-only-operator-token"
 os.environ.pop("GEMINI_API_KEY", None)
 
 
+@pytest.fixture
+def stub_ticket_provider(monkeypatch):
+    from app.agent.core import SupportAgent
+    from tests.offline_ticket_fixture import OfflineTicketFixture
+
+    provider = OfflineTicketFixture()
+    live_parser = SupportAgent._parse_ticket_llm
+    test_key = "offline-test-provider"
+
+    def parse(agent, ticket_text, *, api_key=None):
+        if api_key == test_key:
+            return provider.propose(ticket_text)
+        return live_parser(agent, ticket_text, api_key=api_key)
+
+    monkeypatch.setenv("GEMINI_API_KEY", test_key)
+    monkeypatch.setattr(SupportAgent, "_parse_ticket_llm", parse)
+
+
 @pytest.fixture(autouse=True)
 def reset_rate_limits():
     try:
