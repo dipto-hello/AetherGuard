@@ -12,7 +12,7 @@ export const AuditLedger: React.FC<AuditLedgerProps> = ({ logs }) => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <History className="w-5 h-5 text-emerald-400" />
+            <History className="w-5 h-5 text-brand-400" />
             <h1 className="text-base font-bold text-white">
               Activity
             </h1>
@@ -21,7 +21,7 @@ export const AuditLedger: React.FC<AuditLedgerProps> = ({ logs }) => {
             Recent refund decisions and demo changes across both currencies.
           </p>
         </div>
-        <span className="self-start sm:self-auto text-xs font-mono text-emerald-400 bg-emerald-950/40 border border-emerald-800/60 px-3 py-1 rounded-full font-semibold">
+        <span className="self-start sm:self-auto text-xs font-mono text-brand-400 bg-brand-950/40 border border-brand-800/60 px-3 py-1 rounded-full font-semibold">
           {logs.length} events shown
         </span>
       </div>
@@ -57,7 +57,7 @@ export const AuditLedger: React.FC<AuditLedgerProps> = ({ logs }) => {
                     <td className="py-2.5 px-3 text-white font-bold whitespace-nowrap">
                       {log.action_id}
                     </td>
-                    <td className="py-2.5 px-3 text-emerald-400 whitespace-nowrap">
+                    <td className="py-2.5 px-3 text-brand-400 whitespace-nowrap">
                       {log.tool}
                     </td>
                     <td className="py-2.5 px-3 whitespace-nowrap">

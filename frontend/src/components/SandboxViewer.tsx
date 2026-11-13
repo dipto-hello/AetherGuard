@@ -31,7 +31,7 @@ function PaidAmountEditor({ order, onSaved, currency, rate }: {
   const project = (minor: bigint) => convertOrderMinor(minor, order.currency, currency, rate);
   if (!draft) return (
     <div>
-      <button type="button" className="text-xs text-emerald-300 underline" onClick={() => {
+      <button type="button" className="text-xs text-brand-300 underline" onClick={() => {
         setMessage('');
         setDraft({ order });
       }}>Edit paid total <span className="sr-only">for {order.id}</span></button>
@@ -81,7 +81,7 @@ function PaidAmountEditor({ order, onSaved, currency, rate }: {
       {canConvert && !valid && <p className="text-xs text-rose-300">Enter a positive amount with up to two decimals. The saved total must cover existing refunds and fit the order’s supported range.</p>}
       {message && <p role="alert" className="text-xs text-rose-300">{message}</p>}
       <div className="flex gap-2 text-xs">
-        <button type="submit" disabled={saving || !valid} className="rounded bg-emerald-400 px-2.5 py-1.5 font-bold text-slate-950 disabled:opacity-50">{saving ? 'Saving…' : 'Save total'}</button>
+        <button type="submit" disabled={saving || !valid} className="rounded bg-brand-400 px-2.5 py-1.5 font-bold text-slate-950 disabled:opacity-50">{saving ? 'Saving…' : 'Save total'}</button>
         <button type="button" disabled={saving} className="px-2.5 py-1.5 text-slate-300" onClick={() => { setDraft(null); setMessage(''); }}>Cancel</button>
       </div>
     </form>
@@ -102,7 +102,7 @@ export const SandboxViewer: React.FC<SandboxViewerProps> = ({ orders, refunds, o
         <div className="flex items-center justify-between gap-4 mb-4">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <Database className="w-5 h-5 text-emerald-400" />
+              <Database className="w-5 h-5 text-brand-400" />
               <h1 className="text-base font-bold text-white">
                 Order balances
               </h1>
@@ -175,7 +175,7 @@ export const SandboxViewer: React.FC<SandboxViewerProps> = ({ orders, refunds, o
 
                   <progress
                     aria-label={`Refundable balance for ${ord.id}`}
-                    className="block w-full h-2 accent-emerald-500"
+                    className="block w-full h-2 accent-brand-500"
                     value={ord.refundable_amount}
                     max={ord.paid_amount || 1}
                   />
@@ -233,7 +233,7 @@ export const SandboxViewer: React.FC<SandboxViewerProps> = ({ orders, refunds, o
                     <td className="py-2.5 px-3 text-white font-bold whitespace-nowrap">
                       {ref.id}
                     </td>
-                    <td className="py-2.5 px-3 text-emerald-400 font-semibold whitespace-nowrap">
+                    <td className="py-2.5 px-3 text-brand-400 font-semibold whitespace-nowrap">
                       {ref.order_id}
                     </td>
                     <td className="py-2.5 px-3 text-white font-bold whitespace-nowrap">

@@ -186,7 +186,7 @@ export function App() {
           }}
         >
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+            <div className="w-10 h-10 rounded-xl bg-brand-500/10 border border-brand-500/30 flex items-center justify-center text-brand-400">
               <ShieldCheck className="w-6 h-6" />
             </div>
             <div>
@@ -210,7 +210,7 @@ export function App() {
               value={tokenInput}
               onChange={(event) => setTokenInput(event.target.value)}
               placeholder="Enter password"
-              className="w-full bg-background border border-borderStrong rounded-xl px-4 py-2.5 text-sm font-mono text-white focus:outline-none focus:border-emerald-500 transition"
+              className="w-full bg-background border border-borderStrong rounded-xl px-4 py-2.5 text-sm font-mono text-white focus:outline-none focus:border-brand-500 transition"
             />
           </div>
 
@@ -221,7 +221,7 @@ export function App() {
           )}
 
           <button
-            className="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm transition disabled:opacity-50 shadow-md flex items-center justify-center gap-2"
+            className="w-full py-3 rounded-xl bg-brand-500 hover:bg-brand-400 text-slate-950 font-bold text-sm transition disabled:opacity-50 shadow-md flex items-center justify-center gap-2"
             type="submit"
             disabled={isConnecting}
           >
@@ -236,10 +236,10 @@ export function App() {
   const visibleApprovals = pendingActions.filter((action) => action.arguments?.currency === currencyMode);
 
   return (
-    <div className="workspace-shell min-h-screen bg-background text-slate-100 flex flex-col font-sans selection:bg-emerald-500 selection:text-slate-950">
+    <div className="workspace-shell min-h-screen bg-background text-slate-100 flex flex-col font-sans selection:bg-brand-500 selection:text-slate-950">
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:px-4 focus:py-2 focus:bg-emerald-500 focus:text-slate-950 focus:font-semibold focus:rounded-lg focus:shadow-lg focus:outline-none"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:px-4 focus:py-2 focus:bg-brand-500 focus:text-slate-950 focus:font-semibold focus:rounded-lg focus:shadow-lg focus:outline-none"
       >
         Skip to main content
       </a>
@@ -277,7 +277,7 @@ export function App() {
 
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-24 gap-3 text-slate-400">
-            <RefreshCw className="w-7 h-7 animate-spin text-emerald-400" />
+            <RefreshCw className="w-7 h-7 animate-spin text-brand-400" />
             <span className="text-xs font-mono">Loading the demo…</span>
           </div>
         ) : (

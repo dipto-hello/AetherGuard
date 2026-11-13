@@ -69,7 +69,7 @@ export const PolicyManager: React.FC<PolicyManagerProps> = ({ policy, currencyMo
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <Sliders className="w-5 h-5 text-emerald-400" />
+              <Sliders className="w-5 h-5 text-brand-400" />
               <h1 className="text-base font-bold text-white">
                 Refund rules
               </h1>
@@ -78,7 +78,7 @@ export const PolicyManager: React.FC<PolicyManagerProps> = ({ policy, currencyMo
               Rules are set in USD. For BDT refunds, the server applies the USD limits at its latest available exchange rate.
             </p>
           </div>
-          <span className="self-start sm:self-auto text-xs font-mono px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-semibold">
+          <span className="self-start sm:self-auto text-xs font-mono px-3 py-1 rounded-full bg-brand-500/10 border border-brand-500/30 text-brand-400 font-semibold">
             Rule Version: {policy.version}
           </span>
         </div>
@@ -158,7 +158,7 @@ export const PolicyManager: React.FC<PolicyManagerProps> = ({ policy, currencyMo
           <button
             onClick={handleSave}
             disabled={isSaving || !!inputError}
-            className="px-5 py-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center gap-2 transition disabled:opacity-50 shadow-sm"
+            className="px-5 py-2.5 rounded-lg bg-brand-500 hover:bg-brand-400 text-slate-950 font-bold text-xs flex items-center gap-2 transition disabled:opacity-50 shadow-sm"
           >
             <Save className="w-4 h-4" />
             <span>{isSaving ? 'Saving Changes...' : 'Save Policy Changes'}</span>
