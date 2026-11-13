@@ -8,7 +8,7 @@ The React console uses relative HTTP API paths. FastAPI applies a shared operato
 
 ![Agent execution](assets/agent-execution.svg)
 
-- **Ticket processing** — `api/agent.py` retrieves persisted scope and calls `agent/core.py`. The Gemini SDK proposes structured arguments. The agent checks proposal consistency, then calls the in-process MCP server with mandatory refund approval. Its scoped order enrichment uses a direct database read after order and expiry checks.
+- **Ticket processing** — `api/agent.py` retrieves persisted scope and calls `agent/core.py`. The Gemini SDK proposes structured arguments. The agent checks proposal consistency, then calls the in-process MCP server. Refunds within the auto-approve limit execute immediately; larger eligible refunds wait for approval. Its scoped order enrichment uses a direct database read after order and expiry checks.
 - **Direct governance** — `api/governance.py` invokes `GovernanceBoundary` directly for authenticated API requests. The stdio entry point uses the MCP tool wrapper, which binds the caller through trusted launcher configuration and checks scope ownership.
 - **Policy and persistence** — `governance/boundary.py` records idempotency, reloads persisted scope, evaluates the tool and arguments, enforces the cumulative budget, and records a verdict. It writes pending approvals or executes eligible refunds within the SQLite transaction. Some MCP wrapper denials occur before that transaction.
 - **Evaluation** — `evaluation/runner.py` exercises synthetic cases in a separate in-memory database. Its outcomes measure those cases and do not measure live-model accuracy.
