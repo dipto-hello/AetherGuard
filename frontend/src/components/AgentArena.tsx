@@ -189,7 +189,7 @@ export const AgentArena: React.FC<AgentArenaProps> = ({
                 ? scope.orderId + ' · Up to ' + currencyMode + ' ' + (scope.amount / 100).toFixed(2) + ' · ' + scope.destination
                 : 'No refund permission'}</p>
               <details className="mt-2">
-                <summary className="cursor-pointer text-emerald-300">Change permission</summary>
+                <summary className="cursor-pointer text-brand-300">Change permission</summary>
                 <div className="mt-3 grid gap-3 sm:grid-cols-2">
                   <label className="flex items-center gap-2 sm:col-span-2">
                     <input type="checkbox" checked={scope.enabled} onChange={(event) => setScopeOverride({ ...scope, enabled: event.target.checked })} />
@@ -211,7 +211,7 @@ export const AgentArena: React.FC<AgentArenaProps> = ({
               </details>
             </div>
             <button type="button" onClick={handleRunAgent} disabled={!ticketText.trim() || (scope.enabled && (!scope.orderId.trim() || !scope.destination.trim() || !Number.isSafeInteger(scope.amount) || scope.amount <= 0))}
-              className="rounded-lg bg-emerald-400 px-5 py-2.5 text-sm font-bold text-slate-950 hover:bg-emerald-300 disabled:opacity-50">
+              className="rounded-lg bg-brand-400 px-5 py-2.5 text-sm font-bold text-slate-950 hover:bg-brand-300 disabled:opacity-50">
               {isLoading ? 'Checking…' : 'Run ticket'}
             </button>
           </fieldset>
@@ -247,7 +247,7 @@ export const AgentArena: React.FC<AgentArenaProps> = ({
                 {trace.agent_mode === 'live_gemini' && <div><dt className="text-slate-400">Read by</dt><dd>Gemini</dd></div>}
               </dl>
               {onNavigateTab && trace.pending_approval && <button className="text-sm font-semibold text-amber-300 underline" onClick={() => onNavigateTab('approvals')}>Open approvals</button>}
-              {onNavigateTab && trace.executed && <button className="text-sm font-semibold text-emerald-300 underline" onClick={() => onNavigateTab('sandbox')}>See order balance</button>}
+              {onNavigateTab && trace.executed && <button className="text-sm font-semibold text-brand-300 underline" onClick={() => onNavigateTab('sandbox')}>See order balance</button>}
               <details className="border-t border-borderSubtle pt-3 text-sm">
                 <summary className="cursor-pointer text-slate-300">Technical details</summary>
                 <ol className="mt-3 space-y-3 break-words">

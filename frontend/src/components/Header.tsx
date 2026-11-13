@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'motion/react';
 import { ShieldCheck, RotateCcw, Activity, KeyRound, FlaskConical, ClipboardCheck, ChartNoAxesColumn, Sliders, Wallet } from 'lucide-react';
 import type { PolicyConfig } from '../types';
 import { formatPolicyLimit } from '../policyMoney';
@@ -46,7 +47,7 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-2">
           {/* Logo & Identity */}
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 shrink-0 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+            <div className="w-9 h-9 shrink-0 rounded-lg bg-brand-500/10 border border-brand-500/30 flex items-center justify-center text-brand-400">
               <ShieldCheck className="w-5 h-5" />
             </div>
             <div>
@@ -63,7 +64,7 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             {policy && (
               <div className="hidden lg:flex items-center gap-2.5 px-3 py-1.5 rounded-lg bg-surfaceCard border border-borderSubtle text-xs font-mono text-slate-300">
-                <div className="flex items-center gap-1.5 text-emerald-400 font-semibold">
+                <div className="flex items-center gap-1.5 text-brand-400 font-semibold">
                   <Activity className="w-3.5 h-3.5" />
                   <span>Rule v{policy.version}</span>
                 </div>
@@ -87,7 +88,7 @@ export const Header: React.FC<HeaderProps> = ({
                 onClick={() => setCurrencyMode('USD')}
                 className={`px-2.5 py-1 rounded-md text-xs font-bold transition flex items-center gap-1 ${
                   currencyMode === 'USD'
-                    ? 'bg-emerald-500 text-slate-950 shadow-sm'
+                    ? 'bg-brand-400 text-slate-950 shadow-sm'
                     : 'text-slate-400 hover:text-white'
                 }`}
                 title="Show USD demo scenarios"
@@ -100,7 +101,7 @@ export const Header: React.FC<HeaderProps> = ({
                 onClick={() => setCurrencyMode('BDT')}
                 className={`px-2.5 py-1 rounded-md text-xs font-bold transition flex items-center gap-1 ${
                   currencyMode === 'BDT'
-                    ? 'bg-cyan-500 text-slate-950 shadow-sm'
+                    ? 'bg-brand-400 text-slate-950 shadow-sm'
                     : 'text-slate-400 hover:text-white'
                 }`}
                 title="Show BDT demo scenarios"
@@ -143,16 +144,24 @@ export const Header: React.FC<HeaderProps> = ({
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 aria-current={isActive ? 'page' : undefined}
-                className={`flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-lg transition whitespace-nowrap ${
+                className={`relative flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-lg border border-transparent transition whitespace-nowrap ${
                   isActive
-                    ? 'bg-emerald-400/10 text-emerald-200 border border-emerald-400/25'
-                    : 'border border-transparent text-slate-400 hover:text-white hover:bg-surfaceCard'
+                    ? 'text-brand-200'
+                    : 'text-slate-400 hover:text-white hover:bg-surfaceCard'
                 }`}
               >
-                <tab.icon aria-hidden="true" className="w-4 h-4 shrink-0" />
-                <span>{tab.label}</span>
+                {isActive && (
+                  <motion.span
+                    layoutId="nav-active"
+                    aria-hidden="true"
+                    className="absolute -inset-px rounded-lg bg-brand-400/10 border border-brand-400/25"
+                    transition={{ type: 'spring', bounce: 0, visualDuration: 0.3 }}
+                  />
+                )}
+                <tab.icon aria-hidden="true" className="relative w-4 h-4 shrink-0" />
+                <span className="relative">{tab.label}</span>
                 {tab.badge !== null && (
-                  <span className="rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-bold text-slate-950">
+                  <span className="relative rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-bold text-slate-950">
                     {tab.badge}
                   </span>
                 )}

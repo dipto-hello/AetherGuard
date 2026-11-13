@@ -29,7 +29,7 @@ export const EvaluationMatrix: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <Award className="w-5 h-5 text-emerald-400" />
+              <Award className="w-5 h-5 text-brand-400" />
               <h1 className="text-base font-bold text-white">
                 Refund rule tests
               </h1>
@@ -42,7 +42,7 @@ export const EvaluationMatrix: React.FC = () => {
           <button
             onClick={handleRunEvaluation}
             disabled={isRunning}
-            className="px-5 py-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-2 transition disabled:opacity-50 shrink-0 shadow-sm"
+            className="px-5 py-2.5 rounded-lg bg-brand-500 hover:bg-brand-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-2 transition disabled:opacity-50 shrink-0 shadow-sm"
           >
             {isRunning ? (
               <>

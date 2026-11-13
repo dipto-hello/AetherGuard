@@ -8,21 +8,23 @@ export default {
   theme: {
     extend: {
       colors: {
-        background: '#0B0E14',
-        surface: '#111620',
-        surfaceCard: '#151B27',
-        borderSubtle: '#1F2736',
-        borderStrong: '#2E394D',
-        inkPrimary: '#E6EDF3',
-        inkMuted: '#8B949E',
+        background: '#0A1120',
+        surface: '#0F1829',
+        surfaceCard: '#152036',
+        borderSubtle: '#1E2B42',
+        borderStrong: '#2D3D59',
+        inkPrimary: '#F1F5F9',
+        inkMuted: '#94A3B8',
         statusAllowed: '#2EA043',
         statusApproval: '#D29922',
         statusBlocked: '#F85149',
-        brandAccent: '#38BDF8',
+        brandAccent: '#60A5FA',
         brandEmerald: '#2EA043',
         brandAmber: '#D29922',
         brandRuby: '#F85149',
-        brandCyan: '#38BDF8',
+        brandCyan: '#60A5FA',
+        // Trust-blue brand scale; status colors (emerald/amber/red) stay semantic.
+        brand: { 200: '#BFDBFE', 300: '#93C5FD', 400: '#60A5FA', 500: '#3B82F6', 800: '#1E40AF', 950: '#0B1A33' },
       },
       fontFamily: {
         mono: ['"JetBrains Mono"', 'ui-monospace', 'SFMono-Regular', 'Menlo', '"Noto Sans Bengali"', 'monospace'],

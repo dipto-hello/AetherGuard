@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import type { PendingAction } from '../types';
 import { decideApproval } from '../api';
+import { AnimatePresence, motion } from 'motion/react';
 
 interface ApprovalDeskProps {
   pendingActions: PendingAction[];
@@ -67,16 +68,23 @@ export const ApprovalDesk: React.FC<ApprovalDeskProps> = ({
         {pendingActions.length === 0 && (
           <div className="rounded-xl border border-borderSubtle bg-surface p-5">
             <p className="font-semibold text-white">No {currencyMode} refunds waiting for approval</p>
-            {onNavigateTab && <button className="mt-2 text-sm text-emerald-300 underline" onClick={() => onNavigateTab('arena')}>Test a refund</button>}
+            {onNavigateTab && <button className="mt-2 text-sm text-brand-300 underline" onClick={() => onNavigateTab('arena')}>Test a refund</button>}
           </div>
         )}
+        <AnimatePresence initial={false}>
         {pendingActions.map((action) => {
           const currency = action.arguments?.currency ?? 'USD';
           const symbol = currency === 'BDT' ? '৳' : currency === 'USD' ? '$' : currency + ' ';
           const amount = symbol + ((action.arguments?.amount ?? 0) / 100).toFixed(2);
           const order = action.arguments?.order_id || 'Unknown';
           return (
-            <article key={action.action_id} className="rounded-xl border border-amber-600/50 bg-surface p-5">
+            <motion.article
+              key={action.action_id}
+              layout
+              exit={{ opacity: 0, x: 24, transition: { duration: 0.2, ease: 'easeIn' } }}
+              transition={{ type: 'spring', bounce: 0, visualDuration: 0.3 }}
+              className="rounded-xl border border-amber-600/50 bg-surface p-5"
+            >
               <p className="mb-1 text-xs font-semibold text-amber-200">Waiting for approval</p>
               <h2 className="text-lg font-semibold text-white">{amount} refund for {order}</h2>
               <p className="mt-1 break-words text-sm text-slate-300">Payment destination: {action.arguments?.destination || 'Unknown'}</p>
@@ -100,9 +108,10 @@ export const ApprovalDesk: React.FC<ApprovalDeskProps> = ({
                   <div><dt className="inline">Fingerprint </dt><dd className="inline">{action.fingerprint}</dd></div>
                 </dl>
               </details>
-            </article>
+            </motion.article>
           );
         })}
+        </AnimatePresence>
       </div>
     </section>
   );
