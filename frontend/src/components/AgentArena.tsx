@@ -153,7 +153,7 @@ export const AgentArena: React.FC<AgentArenaProps> = ({
     <div className="mx-auto max-w-5xl">
       <header className="mb-7">
         <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">Test a refund</h1>
-        <p className="mt-2 text-sm text-slate-300">Gemini reads the ticket. Refunds that pass the rules require your approval.</p>
+        <p className="mt-2 text-sm text-slate-300">Gemini reads the ticket. Refunds within the auto-approve limit pay out automatically; larger ones require your approval.</p>
       </header>
       <div className="grid gap-5 lg:grid-cols-2 lg:items-start">
         <section className="min-w-0 rounded-xl border border-borderSubtle bg-surface p-4 sm:p-6" aria-labelledby="ticket-heading">
