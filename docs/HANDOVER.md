@@ -24,7 +24,7 @@ AetherGuard demonstrates policy enforcement and human review for agent-proposed 
 - Preserve native currency amounts. When modifying policy, check the BDT conversion and cumulative scope budget at both proposal and approval.
 - Reuse a stable idempotency key for retries. After an uncertain response, inspect the existing action via `GET /api/governance/actions/lookup` before making another request.
 - Keep SQLite state outside Git. Back up using SQLite-aware tooling before migrations. Legacy authority may expire during initialization while recorded refunds are preserved.
-- Keep API, MCP wrapper, and approval checks aligned while accounting for their different entry points. The ticket path requires review even when direct policy permits an immediate refund.
+- Keep API, MCP wrapper, and approval checks aligned while accounting for their different entry points. The ticket path executes refunds within the auto-approve limit immediately, like the direct API; larger eligible refunds require review.
 
 ## Current limits and next work
 

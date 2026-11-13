@@ -64,17 +64,12 @@ def test_api_process_ticket_end_to_end(monkeypatch):
     assert trace["language"] == "en"
     assert trace["parsed_parameters"]["order_id"] == "ORD-101"
     assert trace["parsed_parameters"]["amount"] == 4000
-    assert trace["boundary_verdict"] == "APPROVAL_REQUIRED"
-    assert trace["executed"] is False
+    assert trace["boundary_verdict"] == "ALLOWED"
+    assert trace["executed"] is True
+    assert trace["pending_approval"] is False
     assert 'refund_order' in calls
     assert trace['transport'] == 'mcp_in_memory'
 
-    assert client.get("/api/sandbox/orders/ORD-101").json()["order"]["refundable_amount"] == 25000
-    approved = client.post(f"/api/governance/approvals/{trace['action_id']}/decide", json={
-        "decision": "approve", "reviewer_id": "demo_operator",
-    })
-    assert approved.status_code == 200
-    assert approved.json()["result"]["status"] == "executed"
     order_res = client.get("/api/sandbox/orders/ORD-101")
     assert order_res.json()["order"]["refundable_amount"] == 21000
 
@@ -102,7 +97,7 @@ def test_agent_mcp_denial_and_approval_leave_sandbox_unchanged():
     assert client.get('/api/sandbox/orders/ORD-102').json()['order']['refundable_amount'] == 4000
 
 
-def test_agent_mcp_retry_with_same_key_does_not_queue_twice():
+def test_agent_mcp_retry_with_same_key_does_not_execute_twice():
     scope = client.post('/api/governance/scopes', json={
         'operator_id': 'demo_operator', 'order_id': 'ORD-101',
         'allowed_action': 'refund_order', 'max_amount': 5000,
@@ -111,9 +106,9 @@ def test_agent_mcp_retry_with_same_key_does_not_queue_twice():
     }).json()['scope']['scope_id']
     request = {'ticket_text': 'Refund $10 for ORD-101 to card_visa_4242',
                'scope_id': scope, 'idempotency_key': 'agent-retry-test'}
-    assert client.post('/api/agent/process-ticket', json=request).json()['trace']['pending_approval']
+    assert client.post('/api/agent/process-ticket', json=request).json()['trace']['executed']
     assert client.post('/api/agent/process-ticket', json=request).status_code == 409
-    assert client.get('/api/sandbox/orders/ORD-101').json()['order']['refundable_amount'] == 25000
+    assert client.get('/api/sandbox/orders/ORD-101').json()['order']['refundable_amount'] == 24000
 
 
 def test_ticket_endpoint_has_no_offline_mode(monkeypatch):

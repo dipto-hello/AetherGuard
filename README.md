@@ -20,7 +20,19 @@ AetherGuard is an AI agent governance prototype built for the International AI B
 1. **Authorize a task.** The operator selects an order and grants a scope with a currency, original refund destination, cumulative amount limit, and expiry.
 2. **Propose a refund.** Gemini reads an English or Bengali support ticket and proposes structured arguments. The backend calls the governed MCP refund tool.
 3. **Enforce policy.** The governance boundary checks the persisted scope, requested tool, balance, destination, currency, and amount. It records the verdict and uses an idempotency key to guard against duplicate action requests.
-4. **Review and execute.** Ticket refunds that pass policy wait for human approval. The approval service verifies the stored action fingerprint and rechecks current authority and policy before writing the refund and audit entry. Eligible direct requests can execute immediately under policy.
+4. **Execute or review.** Refunds that pass every check and are within the auto-approve limit execute immediately, whether they come from a ticket, the direct API, or the stdio MCP server. Larger eligible refunds wait for human approval. The approval service verifies the stored action fingerprint and rechecks current authority and policy before writing the refund and audit entry.
+
+### Refund rules
+
+Operators set two limits in USD on the **Refund rules** tab (defaults: $50 auto-approve, $1,000 maximum). For BDT orders the server converts them at its latest available exchange rate.
+
+| Refund amount (after scope, balance, currency, and destination checks pass) | Result |
+| --- | --- |
+| At or below the auto-approve limit | Executes immediately |
+| Above the auto-approve limit, up to the maximum | Waits in **Approvals** |
+| Above the maximum | Blocked |
+
+Scope, order balance, currency, and destination are checked first, so a refund outside them is blocked regardless of amount.
 
 ## Architecture
 
@@ -74,7 +86,7 @@ See the [setup guide](docs/SETUP.md#configuration) for proxy, rate-limit, and st
 | Goal | In the console |
 | --- | --- |
 | Run the offline checks | Open **Test results** and select **Run tests**. Each case uses a fresh in-memory database, so your demo orders stay as they are. |
-| Follow a ticket through review | With a Gemini key configured, open **Test a refund**, select a synthetic order, and submit a sample ticket. For a proposal held for review, open **Approvals** to inspect the exact amount and destination before deciding. |
+| Follow a ticket through review | With a Gemini key configured, open **Test a refund**, choose a sample ticket or write your own, and set its **Refund permission** (tick **Give permission for this order**, then set the order, maximum, and destination). Without a permission every refund is blocked. A refund within the auto-approve limit executes immediately; a larger one appears in **Approvals**, where you inspect the exact amount and destination before deciding. |
 | Confirm what changed | Compare **Activity** with **Order balances** after the decision. The ledger stores integer amounts in native minor units. USD policy thresholds are converted server-side for BDT enforcement. |
 
 ## MCP tools
@@ -113,9 +125,22 @@ These results apply to the fixed synthetic cases. Live Gemini accuracy and produ
 
 From `frontend/`, run `npm test`, `npm run lint`, and `npm run build`. Then run `python -m pytest -q` and `python -m tests.approval_check` from `backend/` using the virtual environment interpreter. The backend suite checks static serving from the built frontend.
 
+Last local run (2026-11-14): all checks passed.
+
+| Check | Result |
+| --- | --- |
+| Frontend `npm test` | 14 passed |
+| Frontend `npm run lint` | No issues |
+| Frontend `npm run build` | Succeeded |
+| Backend `pytest -q` | 295 passed |
+| Backend `tests.approval_check` | 6 passed |
+
+These tests use local or mocked behavior and do not call live Gemini.
+
 ## Limitations
 
 - The demo uses synthetic tickets and orders. Live ticket processing sends ticket text to Gemini.
+- Ticket refunds within the auto-approve limit execute without human review, so a misread ticket can pay out up to that limit and the scope maximum. Keep both low.
 - The HTTP API uses one shared operator credential. The in-process MCP server shares the application's database authority.
 - SQLite audit records are mutable by database writers. BDT thresholds depend on a cached rate with a dated fallback.
 - The project has a public repository. A project-wide license has yet to be selected.

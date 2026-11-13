@@ -319,9 +319,9 @@ async def test_authorized_ticket_without_destination_enriches_authoritatively(ag
     trace = await agent.process_ticket(ticket_text, task_scope=scope_ord101)
 
     # 1. Success verification
-    assert trace["boundary_verdict"] == PolicyVerdict.APPROVAL_REQUIRED.value
-    assert trace["executed"] is False
-    assert trace["refund"] is None
+    assert trace["boundary_verdict"] == PolicyVerdict.ALLOWED.value
+    assert trace["executed"] is True
+    assert trace["refund"] is not None
 
     # 2. Authoritative destination enrichment verification
     assert trace["parsed_parameters"]["destination"] == "card_visa_4242"
@@ -333,8 +333,8 @@ async def test_authorized_ticket_without_destination_enriches_authoritatively(ag
     assert len(spy_get_order) == 1, f"Expected exactly 1 authorized read, got {len(spy_get_order)}"
     assert spy_get_order[0] == "ORD-101"
 
-    # 4. Balance remains unchanged before approval.
-    assert get_order(conn, "ORD-101")["refundable_amount"] == 25000
+    # 4. Within the auto-approve limit the refund executes immediately.
+    assert get_order(conn, "ORD-101")["refundable_amount"] == 21000
 
 
 @pytest.mark.asyncio
@@ -360,9 +360,9 @@ async def test_authorized_ticket_with_destination_preserves_workflow_with_minimi
     ticket_text = "Refund $40 for ORD-101 to card_visa_4242"
     trace = await agent.process_ticket(ticket_text, task_scope=scope_ord101)
 
-    assert trace["boundary_verdict"] == PolicyVerdict.APPROVAL_REQUIRED.value
-    assert trace["executed"] is False
-    assert trace["refund"] is None
+    assert trace["boundary_verdict"] == PolicyVerdict.ALLOWED.value
+    assert trace["executed"] is True
+    assert trace["refund"] is not None
     assert trace["parsed_parameters"]["destination"] == "card_visa_4242"
     assert trace["order_state"]["masked_destination"] == "card...4242"
 
@@ -416,7 +416,7 @@ async def test_llm_generic_destination_without_scope_zero_db_reads(agent_env, mo
 
 
 @pytest.mark.asyncio
-async def test_llm_generic_destination_with_authorized_scope_enriches_and_queues(agent_env, monkeypatch, spy_get_order):
+async def test_llm_generic_destination_with_authorized_scope_enriches_and_executes(agent_env, monkeypatch, spy_get_order):
     """
     LLM proposes a generic destination ('original payment card').
     When a valid scope is authorized, agent must verify scope first, enrich destination,
@@ -460,14 +460,14 @@ async def test_llm_generic_destination_with_authorized_scope_enriches_and_queues
     ticket_text = "Refund $40 for ORD-101 to original card"
     trace = await agent.process_ticket(ticket_text, task_scope=scope_ord101, api_key="mock_key")
 
-    assert trace["boundary_verdict"] == PolicyVerdict.APPROVAL_REQUIRED.value
-    assert trace["executed"] is False
+    assert trace["boundary_verdict"] == PolicyVerdict.ALLOWED.value
+    assert trace["executed"] is True
     assert trace["parsed_parameters"]["destination"] == "card_visa_4242"
     assert trace["order_state"]["masked_destination"] == "card...4242"
 
     assert len(spy_get_order) == 1, f"Expected exactly 1 authorized read, got {len(spy_get_order)}"
     assert spy_get_order[0] == "ORD-101"
-    assert get_order(conn, "ORD-101")["refundable_amount"] == 25000
+    assert get_order(conn, "ORD-101")["refundable_amount"] == 21000
 
 
 @pytest.mark.asyncio
@@ -514,8 +514,8 @@ async def test_llm_bengali_generic_destination_with_authorized_scope(agent_env, 
     ticket_text = "ORD-103 ৫০ টাকা রিফান্ড দিন"
     trace = await agent.process_ticket(ticket_text, task_scope=scope_ord103, api_key="mock_key")
 
-    assert trace["boundary_verdict"] == PolicyVerdict.APPROVAL_REQUIRED.value
-    assert trace["executed"] is False
+    assert trace["boundary_verdict"] == PolicyVerdict.ALLOWED.value
+    assert trace["executed"] is True
     assert trace["parsed_parameters"]["destination"] == "bkash_01711000000"
     assert trace["order_state"]["masked_destination"] == "bkas...0000"
 

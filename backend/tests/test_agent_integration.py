@@ -20,7 +20,7 @@ def test_setup():
     conn.close()
 
 @pytest.mark.asyncio
-async def test_agent_processes_legitimate_english_ticket_queued_for_approval(test_setup):
+async def test_agent_processes_legitimate_english_ticket_auto_executes(test_setup):
     conn, boundary, agent = test_setup
     scope_ord101 = TaskScope(
         scope_id="scope-en-01",
@@ -40,15 +40,15 @@ async def test_agent_processes_legitimate_english_ticket_queued_for_approval(tes
     assert trace["language"] == "en"
     assert trace["parsed_parameters"]["order_id"] == "ORD-101"
     assert trace["parsed_parameters"]["amount"] == 4000
-    assert trace["boundary_verdict"] == PolicyVerdict.APPROVAL_REQUIRED.value
-    assert trace["executed"] is False
+    assert trace["boundary_verdict"] == PolicyVerdict.ALLOWED.value
+    assert trace["executed"] is True
 
-    # Balance stays unchanged until approval
+    # Within the auto-approve limit, the ticket pays out immediately
     order = get_order(conn, "ORD-101")
-    assert order["refundable_amount"] == 25000
+    assert order["refundable_amount"] == 21000
 
 @pytest.mark.asyncio
-async def test_agent_processes_bengali_ticket_queued_for_approval(test_setup):
+async def test_agent_processes_bengali_ticket_auto_executes(test_setup):
     conn, boundary, agent = test_setup
     scope_ord103 = TaskScope(
         scope_id="scope-bn-01",
@@ -69,12 +69,12 @@ async def test_agent_processes_bengali_ticket_queued_for_approval(test_setup):
     assert trace["parsed_parameters"]["order_id"] == "ORD-103"
     assert trace["parsed_parameters"]["amount"] == 5000  # 5000 poisha = ৳50.00
     assert trace["parsed_parameters"]["currency"] == "BDT"
-    assert trace["boundary_verdict"] == PolicyVerdict.APPROVAL_REQUIRED.value
-    assert trace["executed"] is False
+    assert trace["boundary_verdict"] == PolicyVerdict.ALLOWED.value
+    assert trace["executed"] is True
 
-    # Balance stays unchanged until approval
+    # Within the BDT-converted auto-approve limit, the ticket pays out immediately
     order = get_order(conn, "ORD-103")
-    assert order["refundable_amount"] == 500000
+    assert order["refundable_amount"] == 495000
 
 @pytest.mark.asyncio
 async def test_agent_processes_moderate_english_ticket_approval_required(test_setup):

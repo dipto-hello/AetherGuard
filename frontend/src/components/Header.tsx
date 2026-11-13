@@ -68,7 +68,7 @@ export const Header: React.FC<HeaderProps> = ({
                   <span>Rule v{policy.version}</span>
                 </div>
                 <span className="text-slate-600">|</span>
-                <span>Ticket refunds require approval</span>
+                <span>Refunds above the auto-approve limit require approval</span>
                 <span className="text-slate-600">|</span>
                 <span>
                   Hard Stop:{' '}
