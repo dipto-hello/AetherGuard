@@ -1,6 +1,13 @@
-# AetherGuard
+# ![AetherGuard: review AI-proposed refunds before they change a ledger](docs/assets/banner.svg)
 
-**Review AI-proposed refunds before they change a ledger.**
+[![Checks](https://github.com/dipto-hello/AetherGuard/actions/workflows/checks.yml/badge.svg)](https://github.com/dipto-hello/AetherGuard/actions/workflows/checks.yml)
+[![Deterministic eval: 10/10](https://img.shields.io/badge/deterministic_eval-10%2F10-34d399?labelColor=090D16)](#evaluation)
+![Python 3.12](https://img.shields.io/badge/Python-3.12-34d399?logo=python&logoColor=white&labelColor=090D16)
+![FastAPI](https://img.shields.io/badge/FastAPI-backend-34d399?logo=fastapi&logoColor=white&labelColor=090D16)
+![MCP](https://img.shields.io/badge/MCP-governed_tools-7dd3fc?logo=modelcontextprotocol&logoColor=white&labelColor=090D16)
+![Gemini](https://img.shields.io/badge/Gemini-agent-7dd3fc?logo=googlegemini&logoColor=white&labelColor=090D16)
+![React 19](https://img.shields.io/badge/React-19-7dd3fc?logo=react&logoColor=white&labelColor=090D16)
+![SQLite](https://img.shields.io/badge/SQLite-synthetic_ledger-7dd3fc?logo=sqlite&logoColor=white&labelColor=090D16)
 
 AetherGuard is an AI agent governance prototype built for the International AI Builders Congress 2026 hackathon. It uses synthetic support tickets and a SQLite refund ledger to show how an agent proposal becomes a policy decision, a human approval, or a blocked action.
 
