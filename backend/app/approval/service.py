@@ -2,12 +2,10 @@
 import sqlite3
 import json
 import uuid
-import hashlib
 from typing import Dict, Any, Optional
-from datetime import datetime, timezone
 from app.sandbox.service import get_order, execute_sandbox_refund, get_task_scope, scope_refunded_amount
 from app.policy.engine import evaluate_policy
-from app.policy.models import PolicyConfig, PolicyVerdict, TaskScope
+from app.policy.models import PolicyVerdict, TaskScope, action_fingerprint
 from app.policy.storage import load_policy
 from app.sandbox.exchange_rate import get_policy_rate_micros
 
@@ -43,9 +41,7 @@ def get_pending_action(conn: sqlite3.Connection, action_id: str) -> Optional[Dic
 
 def verify_fingerprint(tool: str, arguments: Dict[str, Any], expected_fingerprint: str) -> bool:
     """Verifies that the canonical JSON payload matches the stored SHA-256 fingerprint."""
-    canonical_str = json.dumps({"tool": tool, "arguments": arguments}, sort_keys=True)
-    computed = hashlib.sha256(canonical_str.encode("utf-8")).hexdigest()
-    return computed == expected_fingerprint
+    return action_fingerprint(tool, arguments) == expected_fingerprint
 
 def decide_approval(
     conn: sqlite3.Connection,
@@ -108,12 +104,7 @@ def decide_approval(
             if not scope:
                 raise ApprovalError("Bound task scope is missing")
             try:
-                task_scope = TaskScope(
-                    scope_id=scope["scope_id"], operator_id=scope["operator_id"],
-                    order_id=scope["order_id"], allowed_action=scope["allowed_action"],
-                    max_amount=scope["max_amount"], allowed_currency=scope["allowed_currency"],
-                    allowed_destination=scope["allowed_destination"], expires_at=scope["expires_at"],
-                )
+                task_scope = TaskScope(**scope)
                 if task_scope.is_expired():
                     raise ScopeExpiredError(f"Bound task scope {action['task_scope_id']} has expired")
                 order = get_order(conn, arguments.get("order_id")) if action["tool"] == "refund_order" else None

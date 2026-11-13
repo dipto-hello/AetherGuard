@@ -24,13 +24,12 @@ from app.approval.service import (
 router = APIRouter(prefix="/api/governance", tags=["Governance"])
 
 class CreateScopeRequest(BaseModel):
-    operator_id: str = Field(..., description="ID of the human operator authorizing the task")
     order_id: str = Field(..., description="Specifically authorized order ID")
     allowed_action: str = Field("refund_order", description="Authorized tool name")
     max_amount: int = Field(..., gt=0, description="Max amount in minor units authorized for this task")
     allowed_currency: str = Field("USD", description="Authorized currency")
     allowed_destination: str = Field(..., description="Authorized payment destination")
-    expires_in_hours: int = Field(2, gt=0, description="Scope validity window in hours")
+    expires_in_hours: int = Field(2, gt=0, le=24, description="Scope validity window in hours")
 
 class InterceptActionRequest(BaseModel):
     tool: str = Field(..., description="Target tool name")
@@ -49,7 +48,7 @@ class DecideApprovalRequest(BaseModel):
     reason: Optional[str] = Field(None, description="Optional explanation for decision")
 
 @router.post("/scopes", status_code=201)
-async def create_task_scope_endpoint(req: CreateScopeRequest):
+def create_task_scope_endpoint(req: CreateScopeRequest):
     """Create an immutable, operator-bounded trusted task scope."""
     conn = get_connection()
     try:
@@ -79,7 +78,7 @@ async def create_task_scope_endpoint(req: CreateScopeRequest):
         conn.close()
 
 @router.get("/scopes/{scope_id}")
-async def get_task_scope_endpoint(scope_id: str):
+def get_task_scope_endpoint(scope_id: str):
     """Retrieve an operator task scope."""
     conn = get_connection()
     try:
@@ -103,16 +102,7 @@ def intercept_and_evaluate_endpoint(req: InterceptActionRequest):
         if req.scope_id:
             raw_scope = get_task_scope(conn, req.scope_id)
             if raw_scope:
-                task_scope = TaskScope(
-                    scope_id=raw_scope["scope_id"],
-                    operator_id=raw_scope["operator_id"],
-                    order_id=raw_scope["order_id"],
-                    allowed_action=raw_scope["allowed_action"],
-                    max_amount=raw_scope["max_amount"],
-                    allowed_currency=raw_scope["allowed_currency"],
-                    allowed_destination=raw_scope["allowed_destination"],
-                    expires_at=datetime.fromisoformat(raw_scope["expires_at"])
-                )
+                task_scope = TaskScope(**raw_scope)
 
         boundary = GovernanceBoundary(conn)
         action_payload = {
@@ -128,7 +118,7 @@ def intercept_and_evaluate_endpoint(req: InterceptActionRequest):
         conn.close()
 
 @router.get("/audit-logs")
-async def get_audit_logs(limit: int = Query(50, ge=1, le=200)):
+def get_audit_logs(limit: int = Query(50, ge=1, le=200)):
     """Retrieve stored audit events."""
     conn = get_connection()
     try:
@@ -139,7 +129,7 @@ async def get_audit_logs(limit: int = Query(50, ge=1, le=200)):
         conn.close()
 
 @router.get("/actions/lookup")
-async def lookup_action(idempotency_key: str):
+def lookup_action(idempotency_key: str):
     """Read a consistent action snapshot; 404 does not exclude an in-flight request."""
     conn = get_connection()
     try:
@@ -164,7 +154,7 @@ async def lookup_action(idempotency_key: str):
         conn.close()
 
 @router.get("/pending-approvals")
-async def get_pending_approvals():
+def get_pending_approvals():
     """Retrieve actions currently suspended awaiting human approval."""
     conn = get_connection()
     try:
@@ -211,7 +201,7 @@ def decide_approval_endpoint(action_id: str, req: DecideApprovalRequest):
         conn.close()
 
 @router.get("/policy")
-async def get_active_policy():
+def get_active_policy():
     """Get active deterministic policy parameters."""
     conn = get_connection()
     try:
@@ -223,7 +213,7 @@ async def get_active_policy():
         conn.close()
 
 @router.put("/policy")
-async def update_policy(req: UpdatePolicyRequest):
+def update_policy(req: UpdatePolicyRequest):
     """Safely update policy thresholds."""
     conn = get_connection()
     try:

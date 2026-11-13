@@ -9,7 +9,6 @@ from app.policy.models import TaskScope
 from app.governance.boundary import GovernanceBoundary
 from app.agent.core import SupportAgent
 from app.agent.tickets import BENCHMARK_TICKETS
-from datetime import datetime
 
 router = APIRouter(prefix="/api/agent", tags=["Agent"])
 
@@ -37,16 +36,7 @@ async def process_ticket_endpoint(req: ProcessTicketRequest):
         if req.scope_id:
             raw_scope = get_task_scope(conn, req.scope_id)
             if raw_scope:
-                task_scope = TaskScope(
-                    scope_id=raw_scope["scope_id"],
-                    operator_id=raw_scope["operator_id"],
-                    order_id=raw_scope["order_id"],
-                    allowed_action=raw_scope["allowed_action"],
-                    max_amount=raw_scope["max_amount"],
-                    allowed_currency=raw_scope["allowed_currency"],
-                    allowed_destination=raw_scope["allowed_destination"],
-                    expires_at=datetime.fromisoformat(raw_scope["expires_at"])
-                )
+                task_scope = TaskScope(**raw_scope)
 
         boundary = GovernanceBoundary(conn)
         agent = SupportAgent(boundary)

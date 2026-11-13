@@ -116,7 +116,6 @@ export async function updatePolicy(updates: Partial<PolicyConfig>): Promise<Poli
 }
 
 export async function createTaskScope(scope: {
-  operator_id: string;
   order_id: string;
   allowed_action: string;
   max_amount: number;
