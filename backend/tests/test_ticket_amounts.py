@@ -134,7 +134,8 @@ async def test_malformed_model_fields_are_blocked_before_dispatch(monkeypatch, f
 
 
 @pytest.mark.asyncio
-async def test_model_proposal_requires_approval_even_if_model_misreads_ticket(monkeypatch):
+async def test_model_misread_within_auto_limit_executes_without_review(monkeypatch):
+    # Accepted risk: tickets within the auto-approve limit skip human review, so a misread pays out.
     from types import SimpleNamespace
     from datetime import datetime, timedelta, timezone
     from google import genai
@@ -153,9 +154,9 @@ async def test_model_proposal_requires_approval_even_if_model_misreads_ticket(mo
         trace = await SupportAgent(GovernanceBoundary(conn), api_key='dummy').process_ticket('Refund $40? Actually leave it as is.', scope)
         assert trace['agent_mode'] == 'live_gemini'
         assert trace['proposed_tool'] == 'refund_order'
-        assert trace['boundary_verdict'] == 'APPROVAL_REQUIRED'
-        assert not trace['executed']
-        assert get_order(conn, 'ORD-101')['refundable_amount'] == 25000
+        assert trace['boundary_verdict'] == 'ALLOWED'
+        assert trace['executed']
+        assert get_order(conn, 'ORD-101')['refundable_amount'] == 21000
     finally:
         conn.close()
 

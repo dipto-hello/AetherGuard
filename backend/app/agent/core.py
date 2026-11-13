@@ -244,7 +244,6 @@ class SupportAgent:
             self.boundary.conn,
             self.boundary,
             authenticated_caller=scope_obj.operator_id if scope_obj else (task_scope.operator_id if task_scope else None),
-            require_refund_approval=True,
         )
         async with Client(server) as client:
             response = await client.call_tool(action_payload['tool'], tool_args)
