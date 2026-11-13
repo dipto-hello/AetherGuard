@@ -48,7 +48,9 @@ class GovernanceBoundary:
                     task_scope = TaskScope(**stored_scope) if stored_scope else None
                 except Exception:
                     task_scope = None
-            order = get_order(self.conn, arguments.get('order_id')) if tool == 'refund_order' and arguments.get('order_id') else None
+            order_id = arguments.get('order_id')
+            # Raw REST arguments can hold any JSON type; SQLite rejects non-text IDs.
+            order = get_order(self.conn, order_id) if tool == 'refund_order' and isinstance(order_id, str) and order_id else None
             policy = load_policy(self.conn) if self.policy_config is _DEFAULT_POLICY else self.policy_config
             verdict, reason = evaluate_policy(tool, arguments, order, task_scope, policy, bdt_rate_micros=bdt_rate)
             if verdict != PolicyVerdict.BLOCKED and tool == 'refund_order' and task_scope:

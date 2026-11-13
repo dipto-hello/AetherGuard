@@ -19,6 +19,22 @@ def test_evaluate_requires_stable_idempotency_key():
     response = client.post('/api/governance/evaluate', json={'tool': 'refund_order', 'arguments': {}})
     assert response.status_code == 422
 
+def test_evaluate_blocks_and_audits_non_text_order_id():
+    scope = client.post("/api/governance/scopes", json={
+        "operator_id": "operator_dipto", "order_id": "ORD-101", "max_amount": 10000,
+        "allowed_destination": "card_visa_4242",
+    }).json()["scope"]
+    res = client.post('/api/governance/evaluate', json={
+        'tool': 'refund_order', 'scope_id': scope['scope_id'], 'idempotency_key': 'bad-order-id',
+        'arguments': {'order_id': {'x': 1}, 'amount': 100, 'currency': 'USD', 'destination': 'card_visa_4242'},
+    })
+    assert res.status_code == 200
+    result = res.json()['result']
+    assert result['verdict'] == 'BLOCKED' and result['executed'] is False
+    logs = client.get('/api/governance/audit-logs').json()['logs']
+    assert any(log['action_id'] == result['action_id'] and log['verdict'] == 'BLOCKED' for log in logs)
+
+
 def test_api_create_and_get_task_scope():
     payload = {
         "operator_id": "operator_dipto",
