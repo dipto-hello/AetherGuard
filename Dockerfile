@@ -1,6 +1,6 @@
 # Multi-stage Dockerfile for AetherGuard Unified AgentOps Control Plane
 # Stage 1: Build the frontend
-FROM node:22-alpine AS frontend-builder
+FROM node:24-alpine AS frontend-builder
 WORKDIR /build/frontend
 COPY frontend/package*.json ./
 RUN npm ci

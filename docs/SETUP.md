@@ -5,7 +5,7 @@ Install Python 3.12, Node.js 24 with npm, and Git. Run the following from the re
 ```powershell
 Set-Location backend
 python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
 Copy-Item .env.example .env
 ```
 
