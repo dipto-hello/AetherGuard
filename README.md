@@ -38,7 +38,7 @@ Install **Python 3.12**, **Node.js 24** with npm, and Git. In PowerShell:
 git clone https://github.com/dipto-hello/AetherGuard.git
 Set-Location AetherGuard/backend
 python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
 Copy-Item .env.example .env
 ```
 
