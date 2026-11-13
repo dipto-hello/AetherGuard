@@ -66,7 +66,6 @@ export const AgentArena: React.FC<AgentArenaProps> = ({
 
       if (scope.enabled) {
         const newScope = await createTaskScope({
-          operator_id: 'demo_operator',
           order_id: scope.orderId.trim(),
           allowed_action: 'refund_order',
           max_amount: scope.amount,

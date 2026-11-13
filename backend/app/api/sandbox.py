@@ -63,7 +63,7 @@ def get_exchange_rate():
     return get_display_quote()
 
 @router.get("/orders")
-async def get_all_orders():
+def get_all_orders():
     """List all synthetic orders in the sandbox."""
     conn = get_connection()
     try:
@@ -73,7 +73,7 @@ async def get_all_orders():
         conn.close()
 
 @router.get("/orders/{order_id}")
-async def get_order_by_id(order_id: str):
+def get_order_by_id(order_id: str):
     """Get single synthetic order details."""
     conn = get_connection()
     try:
@@ -88,7 +88,7 @@ async def get_order_by_id(order_id: str):
         conn.close()
 
 @router.get("/refunds")
-async def get_all_refunds(order_id: Optional[str] = None):
+def get_all_refunds(order_id: Optional[str] = None):
     """List executed refunds in the sandbox."""
     conn = get_connection()
     try:
@@ -98,7 +98,7 @@ async def get_all_refunds(order_id: Optional[str] = None):
         conn.close()
 
 @router.post("/reset")
-async def reset_sandbox():
+def reset_sandbox():
     """Reset all synthetic orders and clear sandbox refunds."""
     conn = get_connection()
     try:

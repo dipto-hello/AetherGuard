@@ -17,8 +17,6 @@ app = FastAPI(
     description="Zero-Trust MCP Governance Boundary & Execution Firewall"
 )
 
-app.add_middleware(OperatorAuthMiddleware)
-
 _RATE_LIMITS = defaultdict(list)
 MAX_REQUEST_SIZE = 1_048_576  # 1 MB maximum payload limit
 
@@ -80,6 +78,9 @@ async def rate_limit_and_size_guard(request: Request, call_next):
         _RATE_LIMITS[client_ip].append(now)
 
     return await call_next(request)
+
+# Added after the guard so it runs first: unauthenticated calls never buffer bodies or spend rate budget.
+app.add_middleware(OperatorAuthMiddleware)
 
 @app.middleware('http')
 async def security_headers(request, call_next):

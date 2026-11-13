@@ -72,6 +72,24 @@ def test_sqlite_wal_pragmas_configured():
             conn.close()
 
 
+def test_unauthenticated_requests_do_not_spend_operator_rate_budget(monkeypatch):
+    from fastapi.testclient import TestClient
+    from app.main import app, _RATE_LIMITS
+
+    monkeypatch.delenv("PYTEST_CURRENT_TEST_BYPASS_RATELIMIT", raising=False)
+    monkeypatch.setenv("AETHERGUARD_RATE_LIMIT_PER_MINUTE", "2")
+    _RATE_LIMITS.clear()
+
+    stranger = TestClient(app)
+    for i in range(3):
+        res = stranger.post("/api/agent/process-ticket", json={"ticket_text": "x", "idempotency_key": f"anon-{i}"})
+        assert res.status_code == 401
+        assert res.headers["X-Content-Type-Options"] == "nosniff"
+    operator = TestClient(app, headers={"Authorization": "Bearer test-only-operator-token"})
+    res = operator.post("/api/agent/process-ticket", json={"ticket_text": "Refund", "idempotency_key": "op-after-anon"})
+    assert res.status_code != 429
+
+
 # 3. Production Rate Limiting Default
 def test_rate_limit_active_in_production_by_default(monkeypatch):
     from fastapi.testclient import TestClient

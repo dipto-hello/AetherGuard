@@ -50,9 +50,10 @@ class ActionIntent(BaseModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     def compute_fingerprint(self) -> str:
-        """Deterministic SHA-256 fingerprint over canonical arguments and tool name"""
-        canonical_str = json.dumps(
-            {"tool": self.tool, "arguments": self.arguments},
-            sort_keys=True
-        )
-        return hashlib.sha256(canonical_str.encode("utf-8")).hexdigest()
+        return action_fingerprint(self.tool, self.arguments)
+
+
+def action_fingerprint(tool: str, arguments: Dict[str, Any]) -> str:
+    """Deterministic SHA-256 fingerprint over canonical arguments and tool name; approvals re-check it."""
+    canonical_str = json.dumps({"tool": tool, "arguments": arguments}, sort_keys=True)
+    return hashlib.sha256(canonical_str.encode("utf-8")).hexdigest()

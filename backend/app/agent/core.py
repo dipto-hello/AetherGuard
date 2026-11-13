@@ -255,11 +255,13 @@ class SupportAgent:
                     if err_data.get('error') == 'IDEMPOTENCY_KEY_REUSED':
                         raise DuplicateIdempotencyError('Idempotency key has already been used; inspect the existing action')
                     if err_data.get('error'):
+                        code = err_data['error']
+                        scope_codes = ('SCOPE_ID_REQUIRED', 'TASK_SCOPE_EXPIRED', 'CALLER_IDENTITY_MISMATCH')
                         evaluation = {
                             "verdict": "BLOCKED",
-                            "reason": f"OUTSIDE_TRUSTED_TASK_SCOPE: {err_data.get('error')}",
+                            "reason": f"{'OUTSIDE_TRUSTED_TASK_SCOPE' if code in scope_codes else 'TOOL_ERROR'}: {code}",
                             "executed": False,
-                            "action_id": action_payload.get("idempotency_key", ""),
+                            "action_id": None,  # the tool rolled back, so no action was recorded
                             "fingerprint": ""
                         }
                     else:

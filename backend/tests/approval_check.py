@@ -39,6 +39,8 @@ models = types.ModuleType("app.policy.models")
 models.PolicyVerdict = PolicyVerdict
 models.PolicyConfig = PolicyConfig
 models.TaskScope = TaskScope
+models.action_fingerprint = lambda tool, arguments: hashlib.sha256(
+    json.dumps({"tool": tool, "arguments": arguments}, sort_keys=True).encode()).hexdigest()
 sys.modules["app.policy.models"] = models
 
 from app.approval.service import ApprovalError, decide_approval
