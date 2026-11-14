@@ -5,7 +5,6 @@ import os
 import json
 import logging
 from typing import Dict, Any, Optional
-from datetime import datetime, timezone
 import uuid
 
 from app.governance.boundary import GovernanceBoundary
@@ -186,11 +185,8 @@ class SupportAgent:
                 scope_obj = task_scope if isinstance(task_scope, TaskScope) else TaskScope(**task_scope)
                 persisted_scope = get_task_scope(self.boundary.conn, scope_obj.scope_id)
                 if persisted_scope:
-                    persisted_exp = datetime.fromisoformat(persisted_scope["expires_at"])
-                    if persisted_exp.tzinfo is None:
-                        persisted_exp = persisted_exp.replace(tzinfo=timezone.utc)
                     has_valid_scope = (
-                        datetime.now(timezone.utc) <= persisted_exp
+                        not TaskScope(**persisted_scope).is_expired()
                         and not scope_obj.is_expired()
                         and bool(order_id)
                         and scope_obj.order_id == order_id

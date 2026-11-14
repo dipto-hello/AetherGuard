@@ -400,7 +400,7 @@ async def test_nonexistent_order_with_matching_scope(mcp_fixture):
     res = await server.call_tool("lookup_order", {"order_id": "ORD-999", "scope_id": "scope-ord-999", "caller_id": "op"})
     assert res.is_error is True
     body = json.loads(res.content[0].text)
-    assert "not found in sandbox" in body["error"]
+    assert body["error"] == "ORDER_NOT_FOUND"
 
     audit = conn.execute(
         "SELECT verdict, reason FROM audit_events WHERE tool = 'lookup_order' ORDER BY rowid DESC LIMIT 1"

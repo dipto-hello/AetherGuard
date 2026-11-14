@@ -107,7 +107,7 @@ def create_governed_mcp_server(
             order = get_order(conn, order_id)
             if not order:
                 return deny("lookup_order", f"Order {order_id} not found in sandbox",
-                            f"Order {order_id} not found in sandbox", {"order_id": order_id})
+                            "ORDER_NOT_FOUND", {"order_id": order_id})
 
             # FAIL-CLOSED: never return data if the audit insert fails.
             try:

@@ -10,7 +10,6 @@ import type {
   EvaluationReport
 } from './types';
 
-const BASE_URL = '';
 let operatorToken = '';
 
 export function setOperatorToken(token: string) {
@@ -63,7 +62,7 @@ export async function fetchExchangeRate(signal: AbortSignal): Promise<{
 }
 
 export async function fetchOrders(): Promise<Order[]> {
-  const res = await apiFetch(`${BASE_URL}/api/sandbox/orders`);
+  const res = await apiFetch(`/api/sandbox/orders`);
   if (!res.ok) throw new Error(await extractErrorMessage(res, 'Failed to fetch sandbox orders'));
   const data = await res.json();
   return data.orders;
@@ -84,28 +83,28 @@ export async function updateOrderPaidAmount(order: Order, paidAmount: number): P
 }
 
 export async function fetchRefunds(): Promise<Refund[]> {
-  const res = await apiFetch(`${BASE_URL}/api/sandbox/refunds`);
+  const res = await apiFetch(`/api/sandbox/refunds`);
   if (!res.ok) throw new Error(await extractErrorMessage(res, 'Failed to fetch refunds'));
   const data = await res.json();
   return data.refunds;
 }
 
 export async function resetSandbox(): Promise<string> {
-  const res = await apiFetch(`${BASE_URL}/api/sandbox/reset`, { method: 'POST' });
+  const res = await apiFetch(`/api/sandbox/reset`, { method: 'POST' });
   if (!res.ok) throw new Error(await extractErrorMessage(res, 'Failed to reset sandbox'));
   const data = await res.json();
   return data.message;
 }
 
 export async function fetchPolicy(): Promise<PolicyConfig> {
-  const res = await apiFetch(`${BASE_URL}/api/governance/policy`);
+  const res = await apiFetch(`/api/governance/policy`);
   if (!res.ok) throw new Error(await extractErrorMessage(res, 'Failed to fetch policy configuration'));
   const data = await res.json();
   return data.policy;
 }
 
 export async function updatePolicy(updates: Partial<PolicyConfig>): Promise<PolicyConfig> {
-  const res = await apiFetch(`${BASE_URL}/api/governance/policy`, {
+  const res = await apiFetch(`/api/governance/policy`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(updates)
@@ -123,7 +122,7 @@ export async function createTaskScope(scope: {
   allowed_destination: string;
   expires_in_hours: number;
 }): Promise<TaskScope> {
-  const res = await apiFetch(`${BASE_URL}/api/governance/scopes`, {
+  const res = await apiFetch(`/api/governance/scopes`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(scope)
@@ -134,7 +133,7 @@ export async function createTaskScope(scope: {
 }
 
 export async function fetchPendingApprovals(): Promise<PendingAction[]> {
-  const res = await apiFetch(`${BASE_URL}/api/governance/pending-approvals`);
+  const res = await apiFetch(`/api/governance/pending-approvals`);
   if (!res.ok) throw new Error(await extractErrorMessage(res, 'Failed to fetch pending approvals'));
   const data = await res.json();
   return data.pending_actions;
@@ -146,7 +145,7 @@ export async function decideApproval(
   reviewerId: string,
   reason?: string
 ): Promise<{ status: string; refund?: Refund }> {
-  const res = await apiFetch(`${BASE_URL}/api/governance/approvals/${actionId}/decide`, {
+  const res = await apiFetch(`/api/governance/approvals/${actionId}/decide`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ decision, reviewer_id: reviewerId, reason })
@@ -159,14 +158,14 @@ export async function decideApproval(
 }
 
 export async function fetchAuditLogs(): Promise<AuditEvent[]> {
-  const res = await apiFetch(`${BASE_URL}/api/governance/audit-logs?limit=50`);
+  const res = await apiFetch(`/api/governance/audit-logs?limit=50`);
   if (!res.ok) throw new Error(await extractErrorMessage(res, 'Failed to fetch audit logs'));
   const data = await res.json();
   return data.logs;
 }
 
 export async function fetchBenchmarkTickets(): Promise<BenchmarkTicket[]> {
-  const res = await apiFetch(`${BASE_URL}/api/agent/tickets`);
+  const res = await apiFetch(`/api/agent/tickets`);
   if (!res.ok) throw new Error(await extractErrorMessage(res, 'Failed to fetch tickets'));
   const data = await res.json();
   return data.tickets;
@@ -178,7 +177,7 @@ export async function processAgentTicket(
   idempotencyKey?: string,
   expectedAmount?: number,
 ): Promise<AgentTrace> {
-  const res = await apiFetch(`${BASE_URL}/api/agent/process-ticket`, {
+  const res = await apiFetch(`/api/agent/process-ticket`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -194,7 +193,7 @@ export async function processAgentTicket(
 }
 
 export async function runEvaluationSuite(): Promise<EvaluationReport> {
-  const res = await apiFetch(`${BASE_URL}/api/evaluation/run`, {
+  const res = await apiFetch(`/api/evaluation/run`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' }
   });
@@ -205,7 +204,7 @@ export async function runEvaluationSuite(): Promise<EvaluationReport> {
 
 export async function lookupAction(key: string): Promise<{ action_id: string; status: string; refund: Refund | null }> {
   const params = new URLSearchParams({ idempotency_key: key });
-  const res = await apiFetch(`${BASE_URL}/api/governance/actions/lookup?${params}`);
+  const res = await apiFetch(`/api/governance/actions/lookup?${params}`);
   if (res.status === 404) throw new Error('No action is recorded yet. A request may still be in progress; do not assume it is safe to retry.');
   if (!res.ok) throw new Error(await extractErrorMessage(res, 'Could not check the action outcome.'));
   return (await res.json()).action;

@@ -4,7 +4,7 @@ import sqlite3
 import uuid
 from typing import Any, Dict, Optional
 
-from app.policy.models import PolicyConfig, PolicyVerdict, TaskScope, ActionIntent
+from app.policy.models import PolicyConfig, PolicyVerdict, TaskScope, action_fingerprint
 from app.policy.engine import evaluate_policy
 from app.policy.storage import load_policy
 from app.sandbox.exchange_rate import get_policy_rate_micros
@@ -14,9 +14,11 @@ _DEFAULT_POLICY = object()
 
 
 class GovernanceBoundary:
-    def __init__(self, conn: sqlite3.Connection, policy_config: Optional[PolicyConfig] = _DEFAULT_POLICY):
+    def __init__(self, conn: sqlite3.Connection, policy_config: Optional[PolicyConfig] = _DEFAULT_POLICY,
+                 bdt_rate_micros: Optional[int] = None):
         self.conn = conn
         self.policy_config = policy_config
+        self.bdt_rate_micros = bdt_rate_micros  # fixed rate for deterministic runs; None uses the live quote
 
     def intercept_and_evaluate(self, action_payload: Dict[str, Any], task_scope: Optional[TaskScope] = None, *,
                                require_refund_approval: bool = False) -> Dict[str, Any]:
@@ -25,10 +27,9 @@ class GovernanceBoundary:
         idempotency_key = action_payload.get('idempotency_key') or f'idemp_{uuid.uuid4().hex}'
         action_id = f'act_{uuid.uuid4().hex}'
         scope_id = task_scope.scope_id if task_scope else None
-        intent = ActionIntent(action_id=action_id, tool=tool, arguments=arguments,
-                              idempotency_key=idempotency_key, task_scope_id=scope_id)
-        fingerprint = intent.compute_fingerprint()
-        bdt_rate = get_policy_rate_micros() if tool == 'refund_order' and arguments.get('currency') == 'BDT' else None
+        fingerprint = action_fingerprint(tool, arguments)
+        bdt_rate = ((self.bdt_rate_micros or get_policy_rate_micros())
+                    if tool == 'refund_order' and arguments.get('currency') == 'BDT' else None)
 
         with self.conn:
             if not self.conn.in_transaction:
