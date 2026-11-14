@@ -8,6 +8,7 @@ from app.approval.service import ApprovalAlreadyProcessedError, decide_approval
 from app.governance.boundary import GovernanceBoundary
 from app.policy.models import PolicyConfig, TaskScope
 from app.sandbox.db import init_db
+from app.sandbox.exchange_rate import REFERENCE_RATE_MICROS
 from app.sandbox.service import save_task_scope
 from .cases import EVALUATION_CASES
 
@@ -73,7 +74,7 @@ def run_evaluation_suite() -> Dict[str, Any]:
                 scope = _make_scope(conn, case)
                 before = _snapshot(conn)
                 policy = None if case.get("simulate_missing_policy") else PolicyConfig()
-                boundary = GovernanceBoundary(conn, policy_config=policy)
+                boundary = GovernanceBoundary(conn, policy_config=policy, bdt_rate_micros=REFERENCE_RATE_MICROS)
                 result = boundary.intercept_and_evaluate(
                     {"tool": case["tool"], "arguments": case["arguments"],
                      "idempotency_key": f"eval_{uuid.uuid4().hex}"},

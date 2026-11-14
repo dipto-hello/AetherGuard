@@ -40,19 +40,6 @@ class PolicyConfig(BaseModel):
     enforce_task_scope: bool = True
     require_exact_destination_match: bool = True
 
-class ActionIntent(BaseModel):
-    """Canonical representation of an intercepted agent tool action"""
-    action_id: str
-    tool: str
-    arguments: Dict[str, Any]
-    idempotency_key: str
-    task_scope_id: Optional[str] = None
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-
-    def compute_fingerprint(self) -> str:
-        return action_fingerprint(self.tool, self.arguments)
-
-
 def action_fingerprint(tool: str, arguments: Dict[str, Any]) -> str:
     """Deterministic SHA-256 fingerprint over canonical arguments and tool name; approvals re-check it."""
     canonical_str = json.dumps({"tool": tool, "arguments": arguments}, sort_keys=True)

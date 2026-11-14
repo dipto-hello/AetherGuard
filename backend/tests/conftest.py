@@ -29,6 +29,19 @@ def stub_ticket_provider(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def offline_exchange_rate(monkeypatch):
+    """Tests never reach the live rate provider; they use the dated reference rate."""
+    from app.sandbox import exchange_rate
+
+    def offline(url, timeout):
+        raise OSError("network disabled in tests")
+
+    monkeypatch.setattr(exchange_rate, "urlopen", offline)
+    monkeypatch.setattr(exchange_rate, "_quote", dict(exchange_rate._quote))
+    monkeypatch.setattr(exchange_rate, "_refresh_after", 0)
+
+
+@pytest.fixture(autouse=True)
 def reset_rate_limits():
     try:
         from app.main import _RATE_LIMITS

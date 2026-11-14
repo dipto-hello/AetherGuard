@@ -129,10 +129,10 @@ Last local run (2026-11-14): all checks passed.
 
 | Check | Result |
 | --- | --- |
-| Frontend `npm test` | 14 passed |
+| Frontend `npm test` | 15 passed |
 | Frontend `npm run lint` | No issues |
 | Frontend `npm run build` | Succeeded |
-| Backend `pytest -q` | 295 passed |
+| Backend `pytest -q` | 299 passed |
 | Backend `tests.approval_check` | 6 passed |
 
 These tests use local or mocked behavior and do not call live Gemini.
