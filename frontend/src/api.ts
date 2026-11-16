@@ -176,6 +176,7 @@ export async function processAgentTicket(
   scopeId?: string,
   idempotencyKey?: string,
   expectedAmount?: number,
+  evidence?: { data: string; mimeType: string },
 ): Promise<AgentTrace> {
   const res = await apiFetch(`/api/agent/process-ticket`, {
     method: 'POST',
@@ -184,7 +185,9 @@ export async function processAgentTicket(
       ticket_text: ticketText,
       scope_id: scopeId,
       expected_amount: expectedAmount,
-      idempotency_key: idempotencyKey
+      idempotency_key: idempotencyKey,
+      evidence_image: evidence?.data,
+      evidence_mime_type: evidence?.mimeType
     })
   });
   if (!res.ok) throw new Error(await extractErrorMessage(res, 'Failed to process ticket with agent'));

@@ -36,6 +36,7 @@ export const AgentArena: React.FC<AgentArenaProps> = ({
     destination: order?.original_destination ?? '',
   };
 
+  const [evidence, setEvidence] = useState<{ data: string; mimeType: string; preview: string } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<{ currency: typeof currencyMode; trace: AgentTrace } | null>(null);
   const trace = result?.currency === currencyMode ? result.trace : null;
@@ -52,6 +53,27 @@ export const AgentArena: React.FC<AgentArenaProps> = ({
   }
 
   const running = useRef(false);
+
+  // Shrink the photo in the browser so the request stays under the server's 1 MB limit.
+  const handlePhoto = async (file: File | undefined) => {
+    setEvidence(null);
+    if (!file) return;
+    try {
+      const bitmap = await createImageBitmap(file);
+      const scale = Math.min(1, 1280 / Math.max(bitmap.width, bitmap.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(bitmap.width * scale);
+      canvas.height = Math.round(bitmap.height * scale);
+      canvas.getContext('2d')!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      bitmap.close();
+      const preview = canvas.toDataURL('image/jpeg', 0.8);
+      setEvidence({ data: preview.slice(preview.indexOf(',') + 1), mimeType: 'image/jpeg', preview });
+      setResult(null);
+      setErrorMsg(null);
+    } catch {
+      setErrorMsg('Could not read that photo. Use a JPEG, PNG or WebP image.');
+    }
+  };
 
   const handleRunAgent = async () => {
     if (running.current || unknownAttempt) return;
@@ -83,6 +105,7 @@ export const AgentArena: React.FC<AgentArenaProps> = ({
         scopeId,
         submittedKey,
         selected?.maxAmount || undefined,
+        evidence ? { data: evidence.data, mimeType: evidence.mimeType } : undefined,
       );
       setUnknownAttempt(null);
       setResult({ currency: currencyMode, trace: resultTrace });
@@ -124,7 +147,12 @@ export const AgentArena: React.FC<AgentArenaProps> = ({
   const balance = /Requested amount (\d+) exceeds refundable balance (\d+)/.exec(reason);
   const limit = /(?:scope maximum|hard ceiling) (\d+)/.exec(reason);
   let explanation = 'The request did not meet the refund rules. Check the ticket and its refund permission.';
+  const judgeReason = (trace?.claim_judgment?.reason ?? '').replace(/\.$/, '');
+  const judgeInvalid = reason.startsWith('CLAIM_INVALID');
+  const judgeUnsure = reason.startsWith('CLAIM_NEEDS_REVIEW');
   if (trace?.executed) explanation = 'The demo order balance was reduced.';
+  else if (judgeInvalid) explanation = 'The AI judge found this claim invalid: ' + judgeReason + '. No refund was made.';
+  else if (judgeUnsure) explanation = 'The AI judge was unsure: ' + judgeReason + '. Approve or reject this refund in Approvals. The balance has not changed.';
   else if (trace?.pending_approval) explanation = 'Review the customer message and the proposed refund before approving. The balance has not changed.';
   else if (reason.includes('REFUND_INTENT_UNCLEAR')) explanation = 'No refund was made. Check the customer’s request and confirm the order, refund amount, and payment destination before trying again.';
   else if (reason.includes('REFUND_AMOUNT_MISMATCH')) explanation = 'The model proposed a different amount from the example. No refund was made.';
@@ -140,7 +168,7 @@ export const AgentArena: React.FC<AgentArenaProps> = ({
   else if (!parsed?.order_id || !parsed.amount) explanation = 'No clear refund amount and order were found in the ticket.';
   else if (reason.includes('SCOPE')) explanation = 'The requested order or refund is outside the permission you set.';
   else if (reason.includes('ORDER_NOT_FOUND')) explanation = 'This order was not found in the demo.';
-  const status = reason.includes('REFUND_INTENT_UNCLEAR') ? 'Needs clarification' : trace?.executed ? 'Refund recorded' : trace?.pending_approval ? 'Needs approval' : trace?.boundary_verdict === 'ALLOWED' ? 'Allowed by rules' : 'Refund blocked';
+  const status = judgeInvalid ? 'Refund blocked by AI judge' : reason.includes('REFUND_INTENT_UNCLEAR') ? 'Needs clarification' : trace?.executed ? 'Refund recorded' : trace?.pending_approval ? 'Needs approval' : trace?.boundary_verdict === 'ALLOWED' ? 'Allowed by rules' : 'Refund blocked';
 
   const needsReview = trace?.pending_approval || reason.includes('REFUND_INTENT_UNCLEAR');
   const accepted = trace?.boundary_verdict === 'ALLOWED';
@@ -166,6 +194,7 @@ export const AgentArena: React.FC<AgentArenaProps> = ({
                   if (event.target.value === activeScenario) return;
                   setActiveScenario(event.target.value);
                   setScopeOverride(null);
+                  setEvidence(null);
                   setResult(null);
                   setErrorMsg(null);
                 }}>
@@ -183,6 +212,21 @@ export const AgentArena: React.FC<AgentArenaProps> = ({
                 onChange={(event) => { setScopeOverride(scope); setCustomText(event.target.value); setActiveScenario(''); setResult(null); setErrorMsg(null); }}
                 className="mt-1 block w-full resize-y rounded-lg border border-borderStrong bg-background p-3 text-sm leading-relaxed text-white" />
             </label>
+            <div className="text-sm">
+              <label className="block font-medium">
+                Evidence photo (optional)
+                <input key={evidence ? 'set' : 'empty'} type="file" accept="image/jpeg,image/png,image/webp"
+                  onChange={(event) => handlePhoto(event.target.files?.[0])}
+                  className="mt-1 block w-full text-sm text-slate-300 file:mr-3 file:rounded file:border-0 file:bg-borderStrong file:px-3 file:py-1.5 file:text-white" />
+              </label>
+              {evidence && (
+                <div className="mt-2 flex items-center gap-3">
+                  <img src={evidence.preview} alt="Evidence photo preview" className="h-16 w-16 rounded object-cover" />
+                  <button type="button" className="text-brand-300 underline" onClick={() => setEvidence(null)}>Remove photo</button>
+                </div>
+              )}
+              <p className="mt-1 text-xs text-slate-400">The AI judge reviews the message and photo before any refund rule runs. Use synthetic photos only.</p>
+            </div>
             <div className="rounded-lg border border-borderSubtle bg-background p-3 text-sm">
               <h3 className="font-semibold text-white">Refund permission</h3>
               <p className="mt-1 break-words text-slate-300">{scope.enabled
@@ -244,6 +288,7 @@ export const AgentArena: React.FC<AgentArenaProps> = ({
                 <div><dt className="text-slate-400">Order</dt><dd>{parsed?.order_id || 'Unknown'}</dd></div>
                 <div><dt className="text-slate-400">Requested</dt><dd>{parsed?.amount ? money(parsed.amount) : '—'}</dd></div>
                 <div><dt className="text-slate-400">Refund recorded</dt><dd>{trace.refund ? money(trace.refund.amount) : 'None'}</dd></div>
+                {trace.claim_judgment && <div><dt className="text-slate-400">AI judge</dt><dd className="capitalize">{trace.claim_judgment.verdict}</dd></div>}
                 {trace.agent_mode === 'live_gemini' && <div><dt className="text-slate-400">Read by</dt><dd>Gemini</dd></div>}
               </dl>
               {onNavigateTab && trace.pending_approval && <button className="text-sm font-semibold text-amber-300 underline" onClick={() => onNavigateTab('approvals')}>Open approvals</button>}

@@ -29,6 +29,14 @@ def stub_ticket_provider(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def offline_claim_judge(monkeypatch):
+    """Proposal tests fake the Gemini client; the judge would see that fake and fail closed. Judge tests call the real method directly."""
+    from app.agent.core import SupportAgent
+    monkeypatch.setattr(SupportAgent, "_judge_claim_llm",
+                        lambda self, text, evidence=None, *, api_key=None: {"verdict": "valid", "reason": "offline stub"})
+
+
+@pytest.fixture(autouse=True)
 def offline_exchange_rate(monkeypatch):
     """Tests never reach the live rate provider; they use the dated reference rate."""
     from app.sandbox import exchange_rate
