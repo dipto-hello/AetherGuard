@@ -18,9 +18,10 @@ AetherGuard is an AI agent governance prototype built for the International AI B
 ## How it works
 
 1. **Authorize a task.** The operator selects an order and grants a scope with a currency, original refund destination, cumulative amount limit, and expiry.
-2. **Propose a refund.** Gemini reads an English or Bengali support ticket and proposes structured arguments. The backend calls the governed MCP refund tool.
-3. **Enforce policy.** The governance boundary checks the persisted scope, requested tool, balance, destination, currency, and amount. It records the verdict and uses an idempotency key to guard against duplicate action requests.
-4. **Execute or review.** Refunds that pass every check and are within the auto-approve limit execute immediately, whether they come from a ticket, the direct API, or the stdio MCP server. Larger eligible refunds wait for human approval. The approval service verifies the stored action fingerprint and rechecks current authority and policy before writing the refund and audit entry.
+2. **Judge the claim.** Gemini reviews the ticket and an optional evidence photo and answers valid, unsure, or invalid. An invalid claim is blocked with `CLAIM_INVALID` and the judge's reason. An unsure claim (or a judge failure) still goes through every rule, but a refund the rules would allow waits in **Approvals** with the judge's reason instead of paying automatically.
+3. **Propose a refund.** Unless the claim is invalid, Gemini reads the English or Bengali ticket and proposes structured arguments. The backend calls the governed MCP refund tool.
+4. **Enforce policy.** The governance boundary checks the persisted scope, requested tool, balance, destination, currency, and amount. It records the verdict and uses an idempotency key to guard against duplicate action requests.
+5. **Execute or review.** Refunds that pass every check and are within the auto-approve limit execute immediately, whether they come from a ticket, the direct API, or the stdio MCP server. Larger eligible refunds wait for human approval. The approval service verifies the stored action fingerprint and rechecks current authority and policy before writing the refund and audit entry.
 
 ### Refund rules
 
@@ -142,6 +143,7 @@ These tests use local or mocked behavior and do not call live Gemini.
 - The demo uses synthetic tickets and orders. Live ticket processing sends ticket text to Gemini.
 - Ticket refunds within the auto-approve limit execute without human review, so a misread ticket can pay out up to that limit and the scope maximum. Keep both low.
 - The HTTP API uses one shared operator credential. The in-process MCP server shares the application's database authority.
+- The AI claim judge is advisory and can be fooled by edited or AI-generated photos; it can only stop a refund, never approve one. Evidence photos are sent to Gemini and are not stored, so use synthetic photos only.
 - SQLite audit records are mutable by database writers. BDT thresholds depend on a cached rate with a dated fallback.
 - The project has a public repository. A project-wide license has yet to be selected.
 

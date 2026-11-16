@@ -88,6 +88,11 @@ export const ApprovalDesk: React.FC<ApprovalDeskProps> = ({
               <p className="mb-1 text-xs font-semibold text-amber-200">Waiting for approval</p>
               <h2 className="text-lg font-semibold text-white">{amount} refund for {order}</h2>
               <p className="mt-1 break-words text-sm text-slate-300">Payment destination: {action.arguments?.destination || 'Unknown'}</p>
+              {action.arguments?.reason?.startsWith('AI judge unsure: ') && (
+                <p className="mt-2 rounded border border-amber-600/40 bg-amber-950/30 p-2 text-sm text-amber-100">
+                  <strong>AI judge was unsure:</strong> {action.arguments.reason.slice('AI judge unsure: '.length)}
+                </p>
+              )}
               {action.created_at && <p className="mt-1 text-sm text-slate-400">Submitted {action.created_at} UTC</p>}
               <div className="mt-4 flex flex-wrap gap-2">
                 <button onClick={() => handleDecision(action.action_id, 'approve')} disabled={processingId !== null}

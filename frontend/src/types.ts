@@ -111,6 +111,7 @@ export interface AgentTrace {
   proposed_tool: string;
   boundary_verdict: 'ALLOWED' | 'APPROVAL_REQUIRED' | 'BLOCKED';
   boundary_reason: string;
+  claim_judgment?: { verdict: 'valid' | 'unsure' | 'invalid'; reason: string } | null;
   executed: boolean;
   action_id?: string;
   fingerprint?: string;
