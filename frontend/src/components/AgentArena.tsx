@@ -156,7 +156,7 @@ export const AgentArena: React.FC<AgentArenaProps> = ({
     explanation = money(trace.refund.amount) + ' refunded to ' + trace.refund.destination + '.'
       + (left !== null ? ' ' + trace.refund.order_id + ' now has ' + money(left) + ' left to refund.' : '');
   }
-  else if (trace?.executed) explanation = 'The demo order balance was reduced.';
+  else if (trace?.executed) explanation = 'The order balance was reduced.';
   else if (judgeInvalid) explanation = 'The AI judge found this claim invalid: ' + judgeReason + '. No refund was made.';
   else if (judgeUnsure) explanation = 'The AI judge was unsure: ' + judgeReason + '. Approve or reject this refund in Approvals. The balance has not changed.';
   else if (trace?.pending_approval) explanation = 'Review the customer message and the proposed refund before approving. The balance has not changed.';
@@ -173,7 +173,7 @@ export const AgentArena: React.FC<AgentArenaProps> = ({
   else if (/SCOPE_(?:ID_)?REQUIRED/.test(reason) || reason.includes('No trusted task scope')) explanation = 'No refund permission was given. The balance has not changed.';
   else if (!parsed?.order_id || !parsed.amount) explanation = 'No clear refund amount and order were found in the ticket.';
   else if (reason.includes('SCOPE')) explanation = 'The requested order or refund is outside the permission you set.';
-  else if (reason.includes('ORDER_NOT_FOUND')) explanation = 'This order was not found in the demo.';
+  else if (reason.includes('ORDER_NOT_FOUND')) explanation = 'This order was not found.';
   const status = judgeInvalid ? 'Refund blocked by AI judge' : reason.includes('REFUND_INTENT_UNCLEAR') ? 'Needs clarification' : trace?.executed ? 'Refund recorded' : trace?.pending_approval ? 'Needs approval' : trace?.boundary_verdict === 'ALLOWED' ? 'Allowed by rules' : 'Refund blocked';
 
   const needsReview = trace?.pending_approval || reason.includes('REFUND_INTENT_UNCLEAR');

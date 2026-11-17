@@ -18,7 +18,7 @@ export const AuditLedger: React.FC<AuditLedgerProps> = ({ logs }) => {
             </h1>
           </div>
           <p className="text-sm text-slate-400">
-            Recent refund decisions and demo changes across both currencies.
+            Recent refund decisions and data changes across both currencies.
           </p>
         </div>
         <span className="self-start sm:self-auto text-xs font-mono text-brand-400 bg-brand-950/40 border border-brand-800/60 px-3 py-1 rounded-full font-semibold">

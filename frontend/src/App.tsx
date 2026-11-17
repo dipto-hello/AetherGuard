@@ -147,7 +147,7 @@ export function App() {
       setSandboxVersion((version) => version + 1);
       await loadAllData();
     } catch {
-      setGlobalError('Could not reset the demo. Check the order balances before trying again.');
+      setGlobalError('Could not reset the data. Check the order balances before trying again.');
     } finally {
       setIsResetting(false);
     }
@@ -179,7 +179,7 @@ export function App() {
               const message = err instanceof Error ? err.message : '';
               setConnectError(message.includes('Access denied')
                 ? 'Incorrect password. Try again.'
-                : 'Could not reach the demo. Check that the server is running.');
+                : 'Could not reach the server. Check that it is running.');
             } finally {
               setIsConnecting(false);
             }
@@ -191,16 +191,16 @@ export function App() {
             </div>
             <div>
               <h1 className="text-base font-bold text-white">AetherGuard</h1>
-              <p className="text-xs text-slate-400">Refund demo</p>
+              <p className="text-xs text-slate-400">Refund review</p>
             </div>
           </div>
 
           <div className="space-y-1.5 pt-2">
             <label htmlFor="operator-token" className="block text-xs font-semibold text-slate-300">
-              Demo password
+              Password
             </label>
             <p className="text-xs text-slate-400 leading-relaxed">
-              Enter the password for this demo.
+              Enter the operator password.
             </p>
             <input
               id="operator-token"
@@ -278,7 +278,7 @@ export function App() {
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-24 gap-3 text-slate-400">
             <RefreshCw className="w-7 h-7 animate-spin text-brand-400" />
-            <span className="text-xs font-mono">Loading the demo…</span>
+            <span className="text-xs font-mono">Loading…</span>
           </div>
         ) : (
           <>

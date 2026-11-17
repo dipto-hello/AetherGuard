@@ -55,7 +55,7 @@ export const Header: React.FC<HeaderProps> = ({
                 <span className="font-bold text-base text-white tracking-tight">AetherGuard</span>
               </div>
               <p className="text-xs text-slate-400">
-                Refund demo
+                Refund review
               </p>
             </div>
           </div>
@@ -81,7 +81,7 @@ export const Header: React.FC<HeaderProps> = ({
             )}
 
             {/* Currency Mode Switcher Pill */}
-            <div className="flex items-center bg-surfaceCard border border-borderStrong rounded-lg p-0.5" role="group" aria-label="Demo currency">
+            <div className="flex items-center bg-surfaceCard border border-borderStrong rounded-lg p-0.5" role="group" aria-label="Currency">
               <button
                 type="button"
                 aria-pressed={currencyMode === 'USD'}
@@ -91,7 +91,7 @@ export const Header: React.FC<HeaderProps> = ({
                     ? 'bg-brand-400 text-slate-950 shadow-sm'
                     : 'text-slate-400 hover:text-white'
                 }`}
-                title="Show USD demo scenarios"
+                title="Show USD scenarios"
               >
                 <span>USD ($)</span>
               </button>
@@ -104,7 +104,7 @@ export const Header: React.FC<HeaderProps> = ({
                     ? 'bg-brand-400 text-slate-950 shadow-sm'
                     : 'text-slate-400 hover:text-white'
                 }`}
-                title="Show BDT demo scenarios"
+                title="Show BDT scenarios"
               >
                 <span>BDT (৳)</span>
               </button>
@@ -114,11 +114,11 @@ export const Header: React.FC<HeaderProps> = ({
               onClick={onReset}
               disabled={isResetting}
               title="Reset synthetic orders and refund history"
-              aria-label="Reset demo data"
+              aria-label="Reset data"
               className="text-xs px-3 py-1.5 rounded-lg bg-surfaceCard hover:bg-slate-800 text-slate-200 border border-borderStrong flex items-center gap-1.5 font-medium transition disabled:opacity-50"
             >
               <RotateCcw className={`w-3.5 h-3.5 text-brandCyan ${isResetting ? 'animate-spin' : ''}`} />
-              <span className="hidden sm:inline">{isResetting ? 'Resetting...' : 'Reset Demo Data'}</span>
+              <span className="hidden sm:inline">{isResetting ? 'Resetting...' : 'Reset Data'}</span>
             </button>
 
             {onChangeToken && (
