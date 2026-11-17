@@ -34,6 +34,10 @@ Before a refund proposal reaches the policy engine, an AI judge reviews the cust
 
 After manual testing, the user chose: **unsure → human approval, invalid → blocked**. An unsure claim runs the proposal and every rule; if the rules allow it, the existing `require_refund_approval` switch forces it into Approvals (`arguments.reason` = `AI judge unsure: <reason>`, shown on the approval card). Rules that block still block. Invalid claims skip the proposal and are blocked with `CLAIM_INVALID: <reason>`. This supersedes the non-goal about not creating pending approvals.
 
+## Revision 2026-11-17: refund eligibility policy
+
+The judge now also checks eligibility, not only believability. A fixed policy in `SupportAgent.REFUND_ELIGIBILITY_POLICY` (option A: in code, not operator-editable) refunds problems the company is responsible for (arrived damaged, wrong or missing item, never delivered, defective) and refuses customer-caused damage after delivery (including breaking it while opening) and change of mind. Unclear fault → `unsure`.
+
 ## Design
 
 **API** (`backend/app/api/agent.py`): `ProcessTicketRequest` gains optional `evidence_image` (base64 string) and `evidence_mime_type` (`image/jpeg`, `image/png`, `image/webp`). The server rejects bad base64, a mime type outside that list, or bytes whose file signature does not match the mime type (HTTP 422). The existing 1 MB request cap stays.

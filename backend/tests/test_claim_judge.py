@@ -178,3 +178,19 @@ def test_evidence_reaches_judge(monkeypatch):
     monkeypatch.setattr(SupportAgent, "_judge_claim_llm", capture)
     _run("good-photo", evidence_image=base64.b64encode(PNG).decode(), evidence_mime_type="image/png")
     assert seen["evidence"] == (PNG, "image/png")
+
+
+def test_judge_prompt_carries_the_refund_eligibility_policy(monkeypatch):
+    sent = {}
+
+    def capture(**kwargs):
+        sent["prompt"] = kwargs["contents"][0]
+        return SimpleNamespace(function_calls=[SimpleNamespace(name="judge_claim", args={"verdict": "invalid", "reason": "x"})])
+    _fake_client(monkeypatch, capture)
+    REAL_JUDGE(SupportAgent(boundary=None, api_key="k"), TICKET)
+    prompt = sent["prompt"]
+    assert "Damaged by the customer after delivery" in prompt
+    assert "broken while opening" in prompt
+    assert "Arrived damaged or broken" in prompt
+    assert "is not clear, use 'unsure'" in prompt
+    assert prompt.index("</refund_policy>") < prompt.index("<ticket>")  # policy is trusted text, outside the ticket

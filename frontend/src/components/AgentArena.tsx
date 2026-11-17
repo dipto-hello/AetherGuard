@@ -150,7 +150,13 @@ export const AgentArena: React.FC<AgentArenaProps> = ({
   const judgeReason = (trace?.claim_judgment?.reason ?? '').replace(/\.$/, '');
   const judgeInvalid = reason.startsWith('CLAIM_INVALID');
   const judgeUnsure = reason.startsWith('CLAIM_NEEDS_REVIEW');
-  if (trace?.executed) explanation = 'The demo order balance was reduced.';
+  if (trace?.executed && trace.refund) {
+    // order_state holds the balance read before this refund was written.
+    const left = trace.order_state ? trace.order_state.refundable_amount - trace.refund.amount : null;
+    explanation = money(trace.refund.amount) + ' refunded to ' + trace.refund.destination + '.'
+      + (left !== null ? ' ' + trace.refund.order_id + ' now has ' + money(left) + ' left to refund.' : '');
+  }
+  else if (trace?.executed) explanation = 'The demo order balance was reduced.';
   else if (judgeInvalid) explanation = 'The AI judge found this claim invalid: ' + judgeReason + '. No refund was made.';
   else if (judgeUnsure) explanation = 'The AI judge was unsure: ' + judgeReason + '. Approve or reject this refund in Approvals. The balance has not changed.';
   else if (trace?.pending_approval) explanation = 'Review the customer message and the proposed refund before approving. The balance has not changed.';
