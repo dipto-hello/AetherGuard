@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import { CircleCheck, CircleX, Clock3 } from 'lucide-react';
 import type { AgentTrace, Order, PolicyConfig } from '../types';
 import { refundExamples } from '../refundExamples';
+import { formatMinor } from '../policyMoney';
 import { processAgentTicket, createTaskScope, lookupAction } from '../api';
 
 interface AgentArenaProps {
@@ -9,10 +10,8 @@ interface AgentArenaProps {
   unknownAttempt: string | null;
   setUnknownAttempt: (key: string | null) => void;
   onNavigateTab?: (tab: string) => void;
-  currencyMode: 'USD' | 'BDT';
   orders: Order[];
   policy: PolicyConfig | null;
-  bdtPerUsd?: number;
 }
 
 export const AgentArena: React.FC<AgentArenaProps> = ({
@@ -20,14 +19,14 @@ export const AgentArena: React.FC<AgentArenaProps> = ({
   unknownAttempt,
   setUnknownAttempt,
   onNavigateTab,
-  currencyMode, orders, policy, bdtPerUsd
+  orders, policy
 }) => {
-  const order = orders.find((item) => item.id === (currencyMode === 'BDT' ? 'ORD-103' : 'ORD-101') && item.currency === currencyMode);
-  const scenarios = refundExamples(order, policy, currencyMode, bdtPerUsd);
+  const scenarios = refundExamples(orders, policy);
   const [activeScenario, setActiveScenario] = useState('normal');
   const [customText, setCustomText] = useState('');
   const selected = scenarios.find((scenario) => scenario.id === activeScenario);
   const ticketText = selected ? selected.text : customText;
+  const order = selected?.order;
   const [scopeOverride, setScopeOverride] = useState<{ enabled: boolean; orderId: string; amount: number; destination: string } | null>(null);
   const scope = scopeOverride ?? {
     enabled: !!selected?.maxAmount && !!order,
@@ -38,19 +37,10 @@ export const AgentArena: React.FC<AgentArenaProps> = ({
 
   const [evidence, setEvidence] = useState<{ data: string; mimeType: string; preview: string } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [result, setResult] = useState<{ currency: typeof currencyMode; trace: AgentTrace } | null>(null);
-  const trace = result?.currency === currencyMode ? result.trace : null;
+  const [trace, setResult] = useState<AgentTrace | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [lookupMessage, setLookupMessage] = useState<string | null>(null);
   const [isChecking, setIsChecking] = useState(false);
-
-  const [prevCurrencyMode, setPrevCurrencyMode] = useState(currencyMode);
-  if (prevCurrencyMode !== currencyMode) {
-    setPrevCurrencyMode(currencyMode);
-    setScopeOverride(null);
-    setResult(null);
-    setErrorMsg(null);
-  }
 
   const running = useRef(false);
 
@@ -91,7 +81,7 @@ export const AgentArena: React.FC<AgentArenaProps> = ({
           order_id: scope.orderId.trim(),
           allowed_action: 'refund_order',
           max_amount: scope.amount,
-          allowed_currency: currencyMode,
+          allowed_currency: 'BDT',
           allowed_destination: scope.destination.trim(),
           expires_in_hours: 2,
         });
@@ -108,7 +98,7 @@ export const AgentArena: React.FC<AgentArenaProps> = ({
         evidence ? { data: evidence.data, mimeType: evidence.mimeType } : undefined,
       );
       setUnknownAttempt(null);
-      setResult({ currency: currencyMode, trace: resultTrace });
+      setResult(resultTrace);
       onActionComplete();
     } catch (err) {
       const detail = err instanceof Error ? err.message : '';
@@ -141,8 +131,7 @@ export const AgentArena: React.FC<AgentArenaProps> = ({
 
 
   const parsed = trace?.parsed_parameters;
-  const symbol = (parsed?.currency || currencyMode) === 'BDT' ? '৳' : '$';
-  const money = (amount: number) => symbol + (amount / 100).toFixed(2);
+  const money = (amount: number) => formatMinor(BigInt(amount), parsed?.currency || 'BDT');
   const reason = trace?.boundary_reason ?? '';
   const balance = /Requested amount (\d+) exceeds refundable balance (\d+)/.exec(reason);
   const limit = /(?:scope maximum|hard ceiling) (\d+)/.exec(reason);
@@ -168,7 +157,7 @@ export const AgentArena: React.FC<AgentArenaProps> = ({
   else if (balance) explanation = 'Only ' + money(Number(balance[2])) + ' is left to refund on this order.';
   else if (limit) explanation = 'The request is above the ' + money(Number(limit[1])) + ' limit.';
   else if (reason.includes('DESTINATION_MISMATCH')) explanation = 'The requested destination does not match the allowed payment account.';
-  else if (reason.includes('CURRENCY')) explanation = 'The request uses a different currency from the one allowed.';
+  else if (reason.includes('CURRENCY')) explanation = 'Only taka (BDT) refunds are supported.';
   else if (reason.includes('EXPIRED')) explanation = 'Permission for this request has expired. Run the ticket again with fresh permission.';
   else if (/SCOPE_(?:ID_)?REQUIRED/.test(reason) || reason.includes('No trusted task scope')) explanation = 'No refund permission was given. The balance has not changed.';
   else if (!parsed?.order_id || !parsed.amount) explanation = 'No clear refund amount and order were found in the ticket.';
@@ -236,7 +225,7 @@ export const AgentArena: React.FC<AgentArenaProps> = ({
             <div className="rounded-lg border border-borderSubtle bg-background p-3 text-sm">
               <h3 className="font-semibold text-white">Refund permission</h3>
               <p className="mt-1 break-words text-slate-300">{scope.enabled
-                ? scope.orderId + ' · Up to ' + currencyMode + ' ' + (scope.amount / 100).toFixed(2) + ' · ' + scope.destination
+                ? scope.orderId + ' · Up to ' + formatMinor(BigInt(scope.amount)) + ' · ' + scope.destination
                 : 'No refund permission'}</p>
               <details className="mt-2">
                 <summary className="cursor-pointer text-brand-300">Change permission</summary>
@@ -249,7 +238,7 @@ export const AgentArena: React.FC<AgentArenaProps> = ({
                     <input disabled={!scope.enabled} className="mt-1 w-full rounded border border-borderStrong bg-surface p-2" value={scope.orderId}
                       onChange={(event) => setScopeOverride({ ...scope, orderId: event.target.value.toUpperCase() })} />
                   </label>
-                  <label>Maximum refund ({currencyMode})
+                  <label>Maximum refund (BDT)
                     <input disabled={!scope.enabled} type="number" min="0.01" step="0.01" className="mt-1 w-full rounded border border-borderStrong bg-surface p-2"
                       value={scope.amount ? scope.amount / 100 : ''} onChange={(event) => setScopeOverride({ ...scope, amount: Math.round(Number(event.target.value) * 100) })} />
                   </label>

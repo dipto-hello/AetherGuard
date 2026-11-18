@@ -7,18 +7,15 @@ from typing import Any, Dict, Optional
 from app.policy.models import PolicyConfig, PolicyVerdict, TaskScope, action_fingerprint
 from app.policy.engine import evaluate_policy
 from app.policy.storage import load_policy
-from app.sandbox.exchange_rate import get_policy_rate_micros
 from app.sandbox.service import get_order, get_task_scope, execute_sandbox_refund, DuplicateIdempotencyError, scope_refunded_amount
 
 _DEFAULT_POLICY = object()
 
 
 class GovernanceBoundary:
-    def __init__(self, conn: sqlite3.Connection, policy_config: Optional[PolicyConfig] = _DEFAULT_POLICY,
-                 bdt_rate_micros: Optional[int] = None):
+    def __init__(self, conn: sqlite3.Connection, policy_config: Optional[PolicyConfig] = _DEFAULT_POLICY):
         self.conn = conn
         self.policy_config = policy_config
-        self.bdt_rate_micros = bdt_rate_micros  # fixed rate for deterministic runs; None uses the live quote
 
     def intercept_and_evaluate(self, action_payload: Dict[str, Any], task_scope: Optional[TaskScope] = None, *,
                                require_refund_approval: bool = False) -> Dict[str, Any]:
@@ -28,8 +25,6 @@ class GovernanceBoundary:
         action_id = f'act_{uuid.uuid4().hex}'
         scope_id = task_scope.scope_id if task_scope else None
         fingerprint = action_fingerprint(tool, arguments)
-        bdt_rate = ((self.bdt_rate_micros or get_policy_rate_micros())
-                    if tool == 'refund_order' and arguments.get('currency') == 'BDT' else None)
 
         with self.conn:
             if not self.conn.in_transaction:
@@ -51,7 +46,7 @@ class GovernanceBoundary:
                     task_scope = None
             order = get_order(self.conn, arguments.get('order_id')) if tool == 'refund_order' and arguments.get('order_id') else None
             policy = load_policy(self.conn) if self.policy_config is _DEFAULT_POLICY else self.policy_config
-            verdict, reason = evaluate_policy(tool, arguments, order, task_scope, policy, bdt_rate_micros=bdt_rate)
+            verdict, reason = evaluate_policy(tool, arguments, order, task_scope, policy)
             if verdict != PolicyVerdict.BLOCKED and tool == 'refund_order' and task_scope:
                 if scope_refunded_amount(self.conn, task_scope.scope_id) + arguments['amount'] > task_scope.max_amount:
                     verdict, reason = PolicyVerdict.BLOCKED, 'OUTSIDE_TRUSTED_TASK_SCOPE: Total refunds exceed scope maximum'
@@ -60,7 +55,7 @@ class GovernanceBoundary:
             self.conn.execute(
                 'INSERT INTO audit_events (id, action_id, tool, verdict, reason, fingerprint, details) VALUES (?, ?, ?, ?, ?, ?, ?)',
                 (f'audit_{uuid.uuid4().hex[:12]}', action_id, tool, verdict.value, reason, fingerprint,
-                 json.dumps({'task_scope_id': scope_id, **({'bdt_rate_micros': bdt_rate} if bdt_rate is not None else {})})),
+                 json.dumps({'task_scope_id': scope_id})),
             )
             result = {'verdict': verdict.value, 'reason': reason, 'executed': False,
                       'action_id': action_id, 'fingerprint': fingerprint}

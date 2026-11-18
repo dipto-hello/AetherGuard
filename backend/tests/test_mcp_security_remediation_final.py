@@ -38,8 +38,8 @@ def active_scope(clean_db):
         operator_id="operator_alice",
         order_id="ORD-101",
         allowed_action="refund_order",
-        max_amount=5000,
-        allowed_currency="USD",
+        max_amount=500000,
+        allowed_currency="BDT",
         allowed_destination="card_visa_4242",
         expires_at=expiry
     )
@@ -95,8 +95,8 @@ async def test_regression_04_anonymous_refund_execution_attempt_fails_closed(cle
     server_anon = create_governed_mcp_server(clean_db, authenticated_caller=None)
     res = await server_anon.call_tool("refund_order", {
         "order_id": "ORD-101",
-        "amount": 1000,
-        "currency": "USD",
+        "amount": 100000,
+        "currency": "BDT",
         "destination": "card_visa_4242",
         "reason": "Unauthorized refund attempt",
         "scope_id": active_scope["scope_id"],
@@ -107,7 +107,7 @@ async def test_regression_04_anonymous_refund_execution_attempt_fails_closed(cle
     assert data.get("error") == "CALLER_IDENTITY_MISMATCH"
     # Verify zero backend deduction
     order = get_order(clean_db, "ORD-101")
-    assert order["refundable_amount"] == 25000
+    assert order["refundable_amount"] == 2500000
 
 # 5. Malicious client presenting another operator's valid scope ID for refund
 @pytest.mark.asyncio
@@ -116,8 +116,8 @@ async def test_regression_05_malicious_operator_cross_scope_refund_fails_closed(
     server_bob = create_governed_mcp_server(clean_db, authenticated_caller="operator_bob")
     res = await server_bob.call_tool("refund_order", {
         "order_id": "ORD-101",
-        "amount": 1000,
-        "currency": "USD",
+        "amount": 100000,
+        "currency": "BDT",
         "destination": "card_visa_4242",
         "reason": "Bob stealing Alice's scope",
         "scope_id": active_scope["scope_id"],
@@ -128,7 +128,7 @@ async def test_regression_05_malicious_operator_cross_scope_refund_fails_closed(
     assert data.get("error") == "CALLER_IDENTITY_MISMATCH"
     # Verify zero backend deduction
     order = get_order(clean_db, "ORD-101")
-    assert order["refundable_amount"] == 25000
+    assert order["refundable_amount"] == 2500000
 
 # 6. Policy missing or tool excluded fails closed
 @pytest.mark.asyncio
@@ -147,8 +147,8 @@ async def test_regression_06_policy_missing_or_tool_excluded_fails_closed(clean_
 
     r_refund = await server_alice.call_tool("refund_order", {
         "order_id": "ORD-101",
-        "amount": 1000,
-        "currency": "USD",
+        "amount": 100000,
+        "currency": "BDT",
         "destination": "card_visa_4242",
         "reason": "test",
         "scope_id": active_scope["scope_id"],
@@ -161,8 +161,8 @@ async def test_regression_06_policy_missing_or_tool_excluded_fails_closed(clean_
     save_policy(clean_db, PolicyConfig(allowed_tools=["lookup_order"]))
     r_refund_ex = await server_alice.call_tool("refund_order", {
         "order_id": "ORD-101",
-        "amount": 1000,
-        "currency": "USD",
+        "amount": 100000,
+        "currency": "BDT",
         "destination": "card_visa_4242",
         "reason": "test",
         "scope_id": active_scope["scope_id"],
@@ -196,8 +196,8 @@ async def test_regression_07_failed_audit_insertion_fails_closed(clean_db, activ
 
     r_refund = await server_alice.call_tool("refund_order", {
         "order_id": "ORD-101",
-        "amount": 1000,
-        "currency": "USD",
+        "amount": 100000,
+        "currency": "BDT",
         "destination": "card_visa_4242",
         "reason": "test",
         "scope_id": active_scope["scope_id"],
@@ -226,9 +226,9 @@ async def test_regression_08_sensitive_response_fields_minimized(clean_db, activ
     assert data["masked_destination"] == "card...4242"
     # Must contain essential balance information
     assert data["order_id"] == "ORD-101"
-    assert data["currency"] == "USD"
-    assert data["paid_amount"] == 25000
-    assert data["refundable_amount"] == 25000
+    assert data["currency"] == "BDT"
+    assert data["paid_amount"] == 2500000
+    assert data["refundable_amount"] == 2500000
     assert data["status"] == "paid"
 
 # 9. Authorized MCP tool execution succeeds for matching operator
@@ -247,8 +247,8 @@ async def test_regression_09_authorized_mcp_tool_execution(clean_db, active_scop
     # Refund under auto-allow
     r_refund = await server_alice.call_tool("refund_order", {
         "order_id": "ORD-101",
-        "amount": 2500,
-        "currency": "USD",
+        "amount": 250000,
+        "currency": "BDT",
         "destination": "card_visa_4242",
         "reason": "Authorized legitimate refund",
         "scope_id": active_scope["scope_id"],
@@ -261,7 +261,7 @@ async def test_regression_09_authorized_mcp_tool_execution(clean_db, active_scop
     
     # Verify balance was updated
     order = get_order(clean_db, "ORD-101")
-    assert order["refundable_amount"] == 22500
+    assert order["refundable_amount"] == 2250000
 
 # 10. Concurrent duplicate refund attempts with matching idempotency keys
 @pytest.mark.asyncio
@@ -273,8 +273,8 @@ async def test_regression_10_concurrent_duplicate_refund_attempts(clean_db, acti
     async def call_refund():
         return await server_alice.call_tool("refund_order", {
             "order_id": "ORD-101",
-            "amount": 1000,
-            "currency": "USD",
+            "amount": 100000,
+            "currency": "BDT",
             "destination": "card_visa_4242",
             "reason": "Concurrent stress test",
             "scope_id": active_scope["scope_id"],
@@ -297,4 +297,4 @@ async def test_regression_10_concurrent_duplicate_refund_attempts(clean_db, acti
     
     # Assert exact deduction occurred once
     order = get_order(clean_db, "ORD-101")
-    assert order["refundable_amount"] == 24000
+    assert order["refundable_amount"] == 2400000

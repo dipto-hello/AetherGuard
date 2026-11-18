@@ -12,7 +12,7 @@ REAL_JUDGE = SupportAgent._judge_claim_llm  # captured before the autouse offlin
 pytestmark = pytest.mark.usefixtures("stub_ticket_provider")
 
 client = TestClient(app, headers={"Authorization": "Bearer test-only-operator-token"})
-TICKET = "My order ORD-101 arrived damaged. Please refund $40 back to my card."
+TICKET = "My order ORD-101 arrived damaged. Please refund ৳4,000 back to my card."
 
 
 @pytest.fixture(autouse=True)
@@ -23,7 +23,7 @@ def reset_sandbox():
 def _scope():
     res = client.post("/api/governance/scopes", json={
         "operator_id": "operator_dipto", "order_id": "ORD-101", "allowed_action": "refund_order",
-        "max_amount": 5000, "allowed_currency": "USD", "allowed_destination": "card_visa_4242",
+        "max_amount": 500000, "allowed_currency": "BDT", "allowed_destination": "card_visa_4242",
         "expires_in_hours": 1,
     })
     return res.json()["scope"]["scope_id"]
@@ -57,10 +57,10 @@ def test_unsure_claim_waits_for_human_approval(monkeypatch):
     assert trace["pending_approval"] is True
     assert trace["executed"] is False
     assert trace["boundary_reason"] == "CLAIM_NEEDS_REVIEW: Photo is too blurry to see the crack"
-    assert _refundable() == 25000
+    assert _refundable() == 2500000
     [pending] = _pending()
     assert pending["action_id"] == trace["action_id"]
-    assert pending["arguments"]["amount"] == 4000
+    assert pending["arguments"]["amount"] == 400000
     assert pending["arguments"]["reason"] == "AI judge unsure: Photo is too blurry to see the crack"
 
 
@@ -70,22 +70,22 @@ def test_approved_unsure_claim_pays_out(monkeypatch):
     res = client.post(f"/api/governance/approvals/{trace['action_id']}/decide",
                       json={"decision": "approve", "reviewer_id": "demo_operator"})
     assert res.status_code == 200, res.text
-    assert _refundable() == 21000
+    assert _refundable() == 2100000
 
 
 def test_unsure_claim_cannot_escape_the_rules(monkeypatch):
     _judge(monkeypatch, "unsure", "Cannot verify")
     res = client.post("/api/governance/scopes", json={
         "operator_id": "operator_dipto", "order_id": "ORD-101", "allowed_action": "refund_order",
-        "max_amount": 3000, "allowed_currency": "USD", "allowed_destination": "card_visa_4242",
+        "max_amount": 300000, "allowed_currency": "BDT", "allowed_destination": "card_visa_4242",
         "expires_in_hours": 1,
     })
     trace = client.post("/api/agent/process-ticket", json={
         "ticket_text": TICKET, "scope_id": res.json()["scope"]["scope_id"], "idempotency_key": "judge-unsure-over",
     }).json()["trace"]
-    assert trace["boundary_verdict"] == "BLOCKED"  # $40 is over the $30 permission
+    assert trace["boundary_verdict"] == "BLOCKED"  # ৳4,000 is over the ৳3,000 permission
     assert _pending() == []
-    assert _refundable() == 25000
+    assert _refundable() == 2500000
 
 
 def test_invalid_claim_is_blocked_without_proposal(monkeypatch):
@@ -100,7 +100,7 @@ def test_invalid_claim_is_blocked_without_proposal(monkeypatch):
     assert trace["boundary_reason"] == "CLAIM_INVALID: Photo shows an intact bottle"
     assert trace["action_id"] is not None  # the attempt is audited
     assert _pending() == []
-    assert _refundable() == 25000
+    assert _refundable() == 2500000
 
 
 def test_valid_claim_runs_existing_flow(monkeypatch):
@@ -108,7 +108,7 @@ def test_valid_claim_runs_existing_flow(monkeypatch):
     trace = _run("judge-valid")
     assert trace["executed"] is True
     assert trace["claim_judgment"] == {"verdict": "valid", "reason": "Coherent damage claim"}
-    assert _refundable() == 21000
+    assert _refundable() == 2100000
 
 
 def _fake_client(monkeypatch, generate):

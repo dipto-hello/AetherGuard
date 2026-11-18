@@ -24,8 +24,8 @@ def test_api_create_and_get_task_scope():
         "operator_id": "operator_dipto",
         "order_id": "ORD-101",
         "allowed_action": "refund_order",
-        "max_amount": 10000,  # $100.00
-        "allowed_currency": "USD",
+        "max_amount": 1000000,  # ৳10,000
+        "allowed_currency": "BDT",
         "allowed_destination": "card_visa_4242",
         "expires_in_hours": 3
     }
@@ -34,7 +34,7 @@ def test_api_create_and_get_task_scope():
     scope = res.json()["scope"]
     assert scope["scope_id"].startswith("scope_")
     assert scope["order_id"] == "ORD-101"
-    assert scope["max_amount"] == 10000
+    assert scope["max_amount"] == 1000000
 
     # Retrieve scope
     get_res = client.get(f"/api/governance/scopes/{scope['scope_id']}")
@@ -47,8 +47,8 @@ def test_api_evaluate_allowed_action():
         "operator_id": "operator_dipto",
         "order_id": "ORD-101",
         "allowed_action": "refund_order",
-        "max_amount": 5000,
-        "allowed_currency": "USD",
+        "max_amount": 500000,
+        "allowed_currency": "BDT",
         "allowed_destination": "card_visa_4242",
         "expires_in_hours": 1
     })
@@ -58,8 +58,8 @@ def test_api_evaluate_allowed_action():
         "tool": "refund_order",
         "arguments": {
             "order_id": "ORD-101",
-            "amount": 3500,  # $35.00
-            "currency": "USD",
+            "amount": 350000,  # ৳3,500
+            "currency": "BDT",
             "destination": "card_visa_4242",
             "reason": "Late shipment apology"
         },
@@ -70,7 +70,7 @@ def test_api_evaluate_allowed_action():
     result = eval_res.json()["result"]
     assert result["verdict"] == "ALLOWED"
     assert result["executed"] is True
-    assert result["refund"]["amount"] == 3500
+    assert result["refund"]["amount"] == 350000
 
     # Verify audit log recorded
     logs_res = client.get("/api/governance/audit-logs")
@@ -85,8 +85,8 @@ def test_api_evaluate_blocked_action():
         "tool": "refund_order",
         "arguments": {
             "order_id": "ORD-102",
-            "amount": 1000,
-            "currency": "USD",
+            "amount": 100000,
+            "currency": "BDT",
             "destination": "card_mc_5555",
             "reason": "Un-scoped small refund"
         },
@@ -104,14 +104,14 @@ def test_api_policy_crud():
     assert "auto_allow_threshold" in get_res.json()["policy"]
 
     update_res = client.put("/api/governance/policy", json={
-        "auto_allow_threshold": 6000
+        "auto_allow_threshold": 600000
     })
     assert update_res.status_code == 200
-    assert update_res.json()["policy"]["auto_allow_threshold"] == 6000
+    assert update_res.json()["policy"]["auto_allow_threshold"] == 600000
     assert any(item['verdict'] == 'POLICY_UPDATED' for item in client.get('/api/governance/audit-logs?limit=100').json()['logs'])
 
-    # Reset back to 5000
-    client.put("/api/governance/policy", json={"auto_allow_threshold": 5000})
+    # Reset back to 500000
+    client.put("/api/governance/policy", json={"auto_allow_threshold": 500000})
 
 
 def test_policy_rejects_unsupported_tools():
@@ -119,25 +119,25 @@ def test_policy_rejects_unsupported_tools():
     assert res.status_code == 422
 
 def test_api_approval_flow_via_rest():
-    # 1. Create task scope for $300 on ORD-101
+    # 1. Create task scope for ৳30,000 on ORD-101
     scope_res = client.post("/api/governance/scopes", json={
         "operator_id": "operator_dipto",
         "order_id": "ORD-101",
         "allowed_action": "refund_order",
-        "max_amount": 30000,
-        "allowed_currency": "USD",
+        "max_amount": 3000000,
+        "allowed_currency": "BDT",
         "allowed_destination": "card_visa_4242",
         "expires_in_hours": 1
     })
     scope_id = scope_res.json()["scope"]["scope_id"]
 
-    # 2. Trigger $250 refund -> APPROVAL_REQUIRED
+    # 2. Trigger ৳25,000 refund -> APPROVAL_REQUIRED
     eval_res = client.post("/api/governance/evaluate", json={
         "tool": "refund_order",
         "arguments": {
             "order_id": "ORD-101",
-            "amount": 25000,
-            "currency": "USD",
+            "amount": 2500000,
+            "currency": "BDT",
             "destination": "card_visa_4242",
             "reason": "REST approval flow test"
         },
@@ -162,7 +162,7 @@ def test_api_approval_flow_via_rest():
     assert approve_res.status_code == 200
     assert approve_res.json()["result"]["status"] == "executed"
     assert approve_res.json()["result"]["reviewer_id"] == "demo_operator"
-    assert approve_res.json()["result"]["refund"]["amount"] == 25000
+    assert approve_res.json()["result"]["refund"]["amount"] == 2500000
 
     # 5. Verify sandbox balance dropped
     order_res = client.get("/api/sandbox/orders/ORD-101")
@@ -183,13 +183,31 @@ def test_api_approval_flow_via_rest():
 
 @pytest.mark.parametrize("change, status, code", [
     ({"order_id": "ORD-999"}, 404, "ORDER_NOT_FOUND"),
-    ({"allowed_currency": "BDT"}, 422, "CURRENCY_MISMATCH"),
+    ({"allowed_currency": "USD"}, 422, None),
     ({"allowed_destination": "card_other_0000"}, 422, "DESTINATION_MISMATCH"),
 ])
 def test_scope_rejects_invalid_order_permission(change, status, code):
     payload = {"operator_id": "demo_operator", "order_id": "ORD-101",
-               "max_amount": 5000, "allowed_currency": "USD",
+               "max_amount": 500000, "allowed_currency": "BDT",
                "allowed_destination": "card_visa_4242"}
     response = client.post("/api/governance/scopes", json={**payload, **change})
     assert response.status_code == status
-    assert response.json()["detail"]["code"] == code
+    if code:
+        assert response.json()["detail"]["code"] == code
+
+
+def test_scope_rejects_legacy_usd_order():
+    from app.sandbox.db import get_connection
+    conn = get_connection()
+    try:
+        with conn:
+            conn.execute("""INSERT OR REPLACE INTO orders (id, customer_name, currency, paid_amount, refundable_amount,
+                            original_destination, status) VALUES ('ORD-LEGACY', 'Legacy', 'USD', 1000, 1000, 'card_x', 'paid')""")
+        response = client.post("/api/governance/scopes", json={
+            "order_id": "ORD-LEGACY", "max_amount": 1000, "allowed_currency": "BDT", "allowed_destination": "card_x"})
+        assert response.status_code == 422
+        assert response.json()["detail"]["code"] == "CURRENCY_MISMATCH"
+    finally:
+        with conn:
+            conn.execute("DELETE FROM orders WHERE id = 'ORD-LEGACY'")
+        conn.close()

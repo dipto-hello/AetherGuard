@@ -66,7 +66,7 @@ async def test_no_scope_without_destination_blocks_and_zero_db_reads(agent_env, 
     Must fail closed, return BLOCKED, sanitize destination, and trigger ZERO get_order reads.
     """
     conn, agent = agent_env
-    ticket_text = "Please refund $40 for order ORD-101"
+    ticket_text = "Please refund ৳4,000 for order ORD-101"
 
     trace = await agent.process_ticket(ticket_text, task_scope=None)
 
@@ -84,7 +84,7 @@ async def test_no_scope_without_destination_blocks_and_zero_db_reads(agent_env, 
     assert len(spy_get_order) == 0, f"Unauthorized database read detected! Calls: {spy_get_order}"
 
     # Database state untouched
-    assert get_order(conn, "ORD-101")["refundable_amount"] == 25000
+    assert get_order(conn, "ORD-101")["refundable_amount"] == 2500000
 
 
 @pytest.mark.asyncio
@@ -95,7 +95,7 @@ async def test_no_scope_with_explicit_destination_blocks_and_zero_db_reads(agent
     Must fail closed, return BLOCKED, sanitize raw destination, and trigger ZERO get_order reads.
     """
     conn, agent = agent_env
-    ticket_text = "Please refund $40 for order ORD-101 to card_visa_4242"
+    ticket_text = "Please refund ৳4,000 for order ORD-101 to card_visa_4242"
 
     trace = await agent.process_ticket(ticket_text, task_scope=None)
 
@@ -110,7 +110,7 @@ async def test_no_scope_with_explicit_destination_blocks_and_zero_db_reads(agent
     assert "card_visa_4242" not in serialized, "Raw payment destination leaked in trace JSON"
 
     assert len(spy_get_order) == 0, f"Unauthorized database read detected! Calls: {spy_get_order}"
-    assert get_order(conn, "ORD-101")["refundable_amount"] == 25000
+    assert get_order(conn, "ORD-101")["refundable_amount"] == 2500000
 
 
 # =====================================================================
@@ -130,14 +130,14 @@ async def test_expired_scope_without_destination_blocks_and_zero_db_reads(agent_
         operator_id="operator_alice",
         order_id="ORD-101",
         allowed_action="refund_order",
-        max_amount=5000,
-        allowed_currency="USD",
+        max_amount=500000,
+        allowed_currency="BDT",
         allowed_destination="card_visa_4242",
         expires_at=past_expiry
     )
     save_task_scope(conn, **expired_scope.model_dump(mode="json"))
 
-    ticket_text = "Late delivery refund $40 for ORD-101"
+    ticket_text = "Late delivery refund ৳4,000 for ORD-101"
     trace = await agent.process_ticket(ticket_text, task_scope=expired_scope)
 
     assert trace["boundary_verdict"] == PolicyVerdict.BLOCKED.value
@@ -146,7 +146,7 @@ async def test_expired_scope_without_destination_blocks_and_zero_db_reads(agent_
     assert trace["parsed_parameters"]["destination"] is None
 
     assert len(spy_get_order) == 0, f"Unauthorized database read on expired scope! Calls: {spy_get_order}"
-    assert get_order(conn, "ORD-101")["refundable_amount"] == 25000
+    assert get_order(conn, "ORD-101")["refundable_amount"] == 2500000
 
 
 @pytest.mark.asyncio
@@ -162,14 +162,14 @@ async def test_expired_scope_with_destination_blocks_and_zero_db_reads(agent_env
         operator_id="operator_alice",
         order_id="ORD-101",
         allowed_action="refund_order",
-        max_amount=5000,
-        allowed_currency="USD",
+        max_amount=500000,
+        allowed_currency="BDT",
         allowed_destination="card_visa_4242",
         expires_at=past_expiry
     )
     save_task_scope(conn, **expired_scope.model_dump(mode="json"))
 
-    ticket_text = "Late delivery refund $40 for ORD-101 to card_visa_4242"
+    ticket_text = "Late delivery refund ৳4,000 for ORD-101 to card_visa_4242"
     trace = await agent.process_ticket(ticket_text, task_scope=expired_scope)
 
     assert trace["boundary_verdict"] == PolicyVerdict.BLOCKED.value
@@ -201,14 +201,14 @@ async def test_cross_order_without_destination_blocks_and_zero_db_reads(agent_en
         operator_id="operator_alice",
         order_id="ORD-101",
         allowed_action="refund_order",
-        max_amount=5000,
-        allowed_currency="USD",
+        max_amount=500000,
+        allowed_currency="BDT",
         allowed_destination="card_visa_4242",
         expires_at=future_expiry
     )
     save_task_scope(conn, **scope_ord101.model_dump(mode="json"))
 
-    ticket_text = "Please refund $40 for order ORD-104"
+    ticket_text = "Please refund ৳4,000 for order ORD-104"
     trace = await agent.process_ticket(ticket_text, task_scope=scope_ord101)
 
     assert trace["boundary_verdict"] == PolicyVerdict.BLOCKED.value
@@ -217,7 +217,7 @@ async def test_cross_order_without_destination_blocks_and_zero_db_reads(agent_en
     assert trace["parsed_parameters"]["destination"] is None
 
     assert len(spy_get_order) == 0, f"Unauthorized read on cross-order target! Calls: {spy_get_order}"
-    assert get_order(conn, "ORD-104")["refundable_amount"] == 500000
+    assert get_order(conn, "ORD-104")["refundable_amount"] == 50000000
 
 
 @pytest.mark.asyncio
@@ -233,14 +233,14 @@ async def test_cross_order_with_destination_blocks_and_zero_db_reads(agent_env, 
         operator_id="operator_alice",
         order_id="ORD-101",
         allowed_action="refund_order",
-        max_amount=5000,
-        allowed_currency="USD",
+        max_amount=500000,
+        allowed_currency="BDT",
         allowed_destination="card_visa_4242",
         expires_at=future_expiry
     )
     save_task_scope(conn, **scope_ord101.model_dump(mode="json"))
 
-    ticket_text = "Refund $40 for ORD-104 to wire_swift_chase"
+    ticket_text = "Refund ৳4,000 for ORD-104 to wire_swift_chase"
     trace = await agent.process_ticket(ticket_text, task_scope=scope_ord101)
 
     assert trace["boundary_verdict"] == PolicyVerdict.BLOCKED.value
@@ -252,10 +252,10 @@ async def test_cross_order_with_destination_blocks_and_zero_db_reads(agent_env, 
     del trace_copy["ticket_text"]
     serialized = json.dumps(trace_copy)
     assert "wire_swift_chase" not in serialized
-    assert "500000" not in serialized
+    assert "50000000" not in serialized
 
     assert len(spy_get_order) == 0, f"Unauthorized read on cross-order target! Calls: {spy_get_order}"
-    assert get_order(conn, "ORD-104")["refundable_amount"] == 500000
+    assert get_order(conn, "ORD-104")["refundable_amount"] == 50000000
 
 
 @pytest.mark.asyncio
@@ -271,14 +271,14 @@ async def test_unpersisted_scope_without_destination_blocks_and_zero_db_reads(ag
         operator_id="operator_untrusted",
         order_id="ORD-101",
         allowed_action="refund_order",
-        max_amount=5000,
-        allowed_currency="USD",
+        max_amount=500000,
+        allowed_currency="BDT",
         allowed_destination="card_visa_4242",
         expires_at=future_expiry
     )
     # Notice: save_task_scope is NOT called! Scope does not exist in SQLite table.
 
-    ticket_text = "Please refund $40 for order ORD-101"
+    ticket_text = "Please refund ৳4,000 for order ORD-101"
     trace = await agent.process_ticket(ticket_text, task_scope=unpersisted_scope)
 
     assert trace["boundary_verdict"] == PolicyVerdict.BLOCKED.value
@@ -308,14 +308,14 @@ async def test_authorized_ticket_without_destination_enriches_authoritatively(ag
         operator_id="operator_alice",
         order_id="ORD-101",
         allowed_action="refund_order",
-        max_amount=5000,
-        allowed_currency="USD",
+        max_amount=500000,
+        allowed_currency="BDT",
         allowed_destination="card_visa_4242",
         expires_at=future_expiry
     )
     save_task_scope(conn, **scope_ord101.model_dump(mode="json"))
 
-    ticket_text = "Please refund $40 for order ORD-101"
+    ticket_text = "Please refund ৳4,000 for order ORD-101"
     trace = await agent.process_ticket(ticket_text, task_scope=scope_ord101)
 
     # 1. Success verification
@@ -334,7 +334,7 @@ async def test_authorized_ticket_without_destination_enriches_authoritatively(ag
     assert spy_get_order[0] == "ORD-101"
 
     # 4. Within the auto-approve limit the refund executes immediately.
-    assert get_order(conn, "ORD-101")["refundable_amount"] == 21000
+    assert get_order(conn, "ORD-101")["refundable_amount"] == 2100000
 
 
 @pytest.mark.asyncio
@@ -350,14 +350,14 @@ async def test_authorized_ticket_with_destination_preserves_workflow_with_minimi
         operator_id="operator_alice",
         order_id="ORD-101",
         allowed_action="refund_order",
-        max_amount=5000,
-        allowed_currency="USD",
+        max_amount=500000,
+        allowed_currency="BDT",
         allowed_destination="card_visa_4242",
         expires_at=future_expiry
     )
     save_task_scope(conn, **scope_ord101.model_dump(mode="json"))
 
-    ticket_text = "Refund $40 for ORD-101 to card_visa_4242"
+    ticket_text = "Refund ৳4,000 for ORD-101 to card_visa_4242"
     trace = await agent.process_ticket(ticket_text, task_scope=scope_ord101)
 
     assert trace["boundary_verdict"] == PolicyVerdict.ALLOWED.value
@@ -391,8 +391,8 @@ async def test_llm_generic_destination_without_scope_zero_db_reads(agent_env, mo
                     name="refund_order",
                     args={
                         "order_id": "ORD-101",
-                        "currency": "USD",
-                        "amount_minor": 4000,
+                        "currency": "BDT",
+                        "amount_minor": 400000,
                         "destination": "original_payment_method"
                     }
                 )
@@ -403,7 +403,7 @@ async def test_llm_generic_destination_without_scope_zero_db_reads(agent_env, mo
         models=SimpleNamespace(generate_content=mock_generate_generic)
     ))
 
-    ticket_text = "I would like a refund of $40 for order ORD-101 to my original card please"
+    ticket_text = "I would like a refund of ৳4,000 for order ORD-101 to my original card please"
     trace = await agent.process_ticket(ticket_text, task_scope=None, api_key="mock_key")
 
     assert trace["boundary_verdict"] == PolicyVerdict.BLOCKED.value
@@ -431,8 +431,8 @@ async def test_llm_generic_destination_with_authorized_scope_enriches_and_execut
         operator_id="operator_alice",
         order_id="ORD-101",
         allowed_action="refund_order",
-        max_amount=5000,
-        allowed_currency="USD",
+        max_amount=500000,
+        allowed_currency="BDT",
         allowed_destination="card_visa_4242",
         expires_at=future_expiry
     )
@@ -445,8 +445,8 @@ async def test_llm_generic_destination_with_authorized_scope_enriches_and_execut
                     name="refund_order",
                     args={
                         "order_id": "ORD-101",
-                        "currency": "USD",
-                        "amount_minor": 4000,
+                        "currency": "BDT",
+                        "amount_minor": 400000,
                         "destination": "original_payment_method"
                     }
                 )
@@ -457,7 +457,7 @@ async def test_llm_generic_destination_with_authorized_scope_enriches_and_execut
         models=SimpleNamespace(generate_content=mock_generate_generic)
     ))
 
-    ticket_text = "Refund $40 for ORD-101 to original card"
+    ticket_text = "Refund ৳4,000 for ORD-101 to original card"
     trace = await agent.process_ticket(ticket_text, task_scope=scope_ord101, api_key="mock_key")
 
     assert trace["boundary_verdict"] == PolicyVerdict.ALLOWED.value
@@ -467,7 +467,7 @@ async def test_llm_generic_destination_with_authorized_scope_enriches_and_execut
 
     assert len(spy_get_order) == 1, f"Expected exactly 1 authorized read, got {len(spy_get_order)}"
     assert spy_get_order[0] == "ORD-101"
-    assert get_order(conn, "ORD-101")["refundable_amount"] == 21000
+    assert get_order(conn, "ORD-101")["refundable_amount"] == 2100000
 
 
 @pytest.mark.asyncio
@@ -536,9 +536,9 @@ def test_parser_methods_never_call_get_order_directly(agent_env, monkeypatch, sp
     conn, agent = agent_env
 
     # 1. Synthetic English ticket without destination
-    p1 = OfflineTicketFixture()._parse_ticket_synthetic("Please refund $40 for order ORD-101")
+    p1 = OfflineTicketFixture()._parse_ticket_synthetic("Please refund ৳4,000 for order ORD-101")
     assert p1["order_id"] == "ORD-101"
-    assert p1["amount"] == 4000
+    assert p1["amount"] == 400000
     assert p1["destination"] is None
     assert len(spy_get_order) == 0
 
@@ -550,7 +550,7 @@ def test_parser_methods_never_call_get_order_directly(agent_env, monkeypatch, sp
     assert len(spy_get_order) == 0
 
     # 3. Synthetic ticket with generic destination text
-    p3 = OfflineTicketFixture()._parse_ticket_synthetic("Please refund $40 for order ORD-101 to my card")
+    p3 = OfflineTicketFixture()._parse_ticket_synthetic("Please refund ৳4,000 for order ORD-101 to my card")
     assert p3["destination"] is None
     assert len(spy_get_order) == 0
 
@@ -562,8 +562,8 @@ def test_parser_methods_never_call_get_order_directly(agent_env, monkeypatch, sp
                     name="refund_order",
                     args={
                         "order_id": "ORD-101",
-                        "currency": "USD",
-                        "amount_minor": 4000,
+                        "currency": "BDT",
+                        "amount_minor": 400000,
                         "destination": "original_payment_method"
                     }
                 )
@@ -574,6 +574,6 @@ def test_parser_methods_never_call_get_order_directly(agent_env, monkeypatch, sp
         models=SimpleNamespace(generate_content=mock_generate_generic)
     ))
 
-    p4 = agent._parse_ticket_llm("Refund $40 for ORD-101", api_key="dummy")
+    p4 = agent._parse_ticket_llm("Refund ৳4,000 for ORD-101", api_key="dummy")
     assert p4["destination"] is None
     assert len(spy_get_order) == 0, f"Parser alone called get_order! Calls: {spy_get_order}"

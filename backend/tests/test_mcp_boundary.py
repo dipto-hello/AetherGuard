@@ -27,14 +27,14 @@ async def test_mcp_lookup_order(test_setup):
     expiry = (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()
     save_task_scope(
         conn=conn, scope_id="scope-mcp-lookup", operator_id="operator_dipto", order_id="ORD-101",
-        allowed_action="refund_order", max_amount=5000, allowed_currency="USD",
+        allowed_action="refund_order", max_amount=500000, allowed_currency="BDT",
         allowed_destination="card_visa_4242", expires_at=expiry
     )
     call_res = await server.call_tool("lookup_order", {"order_id": "ORD-101", "scope_id": "scope-mcp-lookup", "caller_id": "operator_dipto"})
     assert not call_res.is_error
     data = json.loads(call_res.content[0].text)
     assert data["order_id"] == "ORD-101"
-    assert data["paid_amount"] == 25000
+    assert data["paid_amount"] == 2500000
     assert "customer_name" not in data
     assert "original_destination" not in data
     assert data["masked_destination"] == "card...4242"
@@ -45,14 +45,14 @@ async def test_mcp_refund_requires_stable_idempotency_key(test_setup):
     conn, server = test_setup
     expiry = (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()
     save_task_scope(conn=conn, scope_id='require-key', operator_id='operator_dipto', order_id='ORD-101',
-                    allowed_action='refund_order', max_amount=5000, allowed_currency='USD',
+                    allowed_action='refund_order', max_amount=500000, allowed_currency='BDT',
                     allowed_destination='card_visa_4242', expires_at=expiry)
-    args = {'order_id': 'ORD-101', 'amount': 4000, 'currency': 'USD',
+    args = {'order_id': 'ORD-101', 'amount': 400000, 'currency': 'BDT',
             'destination': 'card_visa_4242', 'reason': 'synthetic', 'scope_id': 'require-key'}
     for key in (None, '', '   ', 'x' * 129):
         result = await server.call_tool('refund_order', {**args, 'idempotency_key': key})
         assert json.loads(result.content[0].text)['error'] == 'IDEMPOTENCY_KEY_REQUIRED'
-    assert get_order(conn, 'ORD-101')['refundable_amount'] == 25000
+    assert get_order(conn, 'ORD-101')['refundable_amount'] == 2500000
 
 @pytest.mark.asyncio
 async def test_mcp_refund_within_task_scope_allowed(test_setup):
@@ -65,8 +65,8 @@ async def test_mcp_refund_within_task_scope_allowed(test_setup):
         operator_id="operator_dipto",
         order_id="ORD-101",
         allowed_action="refund_order",
-        max_amount=5000,  # $50.00
-        allowed_currency="USD",
+        max_amount=500000,  # ৳5,000
+        allowed_currency="BDT",
         allowed_destination="card_visa_4242",
         expires_at=expiry
     )
@@ -76,8 +76,8 @@ async def test_mcp_refund_within_task_scope_allowed(test_setup):
         "refund_order",
         {
             "order_id": "ORD-101",
-            "amount": 4000,  # $40.00
-            "currency": "USD",
+            "amount": 400000,  # ৳4,000
+            "currency": "BDT",
             "destination": "card_visa_4242",
             "reason": "Late delivery apology refund",
             "scope_id": "scope-mcp-01", "idempotency_key": "mcp-allow"
@@ -87,11 +87,11 @@ async def test_mcp_refund_within_task_scope_allowed(test_setup):
     result = json.loads(call_res.content[0].text)
     assert result["verdict"] == "ALLOWED"
     assert result["executed"] is True
-    assert result["refund"]["amount"] == 4000
+    assert result["refund"]["amount"] == 400000
 
     # Verify physical sandbox state
     order = get_order(conn, "ORD-101")
-    assert order["refundable_amount"] == 21000
+    assert order["refundable_amount"] == 2100000
 
 @pytest.mark.asyncio
 async def test_mcp_small_refund_outside_scope_is_blocked(test_setup):
@@ -104,19 +104,19 @@ async def test_mcp_small_refund_outside_scope_is_blocked(test_setup):
         operator_id="operator_dipto",
         order_id="ORD-101",
         allowed_action="refund_order",
-        max_amount=5000,
-        allowed_currency="USD",
+        max_amount=500000,
+        allowed_currency="BDT",
         allowed_destination="card_visa_4242",
         expires_at=expiry
     )
 
-    # Rogue agent attempts to refund ORD-102 (even for just $10 = 1000 cents)
+    # Rogue agent attempts to refund ORD-102 (even for just ৳1,000 = 100000 poisha)
     call_res = await server.call_tool(
         "refund_order",
         {
             "order_id": "ORD-102",  # VIOLATION: Not authorized by scope!
-            "amount": 1000,
-            "currency": "USD",
+            "amount": 100000,
+            "currency": "BDT",
             "destination": "card_mc_5555",
             "reason": "Unauthorized refund",
             "scope_id": "scope-mcp-02", "idempotency_key": "mcp-block"
@@ -129,12 +129,12 @@ async def test_mcp_small_refund_outside_scope_is_blocked(test_setup):
 
     # Verify physical sandbox state: ORD-102 balance MUST NOT CHANGE
     order_102 = get_order(conn, "ORD-102")
-    assert order_102["refundable_amount"] == 4000
+    assert order_102["refundable_amount"] == 400000
 
 @pytest.mark.asyncio
 async def test_mcp_refund_requiring_human_approval(test_setup):
     conn, server = test_setup
-    # Operator grants scope for up to $300
+    # Operator grants scope for up to ৳30,000
     expiry = (datetime.now(timezone.utc) + timedelta(hours=2)).isoformat()
     save_task_scope(
         conn=conn,
@@ -142,19 +142,19 @@ async def test_mcp_refund_requiring_human_approval(test_setup):
         operator_id="operator_dipto",
         order_id="ORD-101",
         allowed_action="refund_order",
-        max_amount=30000,
-        allowed_currency="USD",
+        max_amount=3000000,
+        allowed_currency="BDT",
         allowed_destination="card_visa_4242",
         expires_at=expiry
     )
 
-    # Agent calls refund for $250
+    # Agent calls refund for ৳25,000
     call_res = await server.call_tool(
         "refund_order",
         {
             "order_id": "ORD-101",
-            "amount": 25000,
-            "currency": "USD",
+            "amount": 2500000,
+            "currency": "BDT",
             "destination": "card_visa_4242",
             "reason": "Customer cancellation",
             "scope_id": "scope-mcp-03", "idempotency_key": "mcp-approval"
@@ -167,7 +167,7 @@ async def test_mcp_refund_requiring_human_approval(test_setup):
 
     # Backend balance MUST NOT be deducted
     order = get_order(conn, "ORD-101")
-    assert order["refundable_amount"] == 25000
+    assert order["refundable_amount"] == 2500000
 
 
 @pytest.mark.asyncio
@@ -180,8 +180,8 @@ async def test_lookup_order_requires_valid_scope(test_setup):
         operator_id="operator_dipto",
         order_id="ORD-101",
         allowed_action="refund_order",
-        max_amount=5000,
-        allowed_currency="USD",
+        max_amount=500000,
+        allowed_currency="BDT",
         allowed_destination="card_visa_4242",
         expires_at=expiry
     )
@@ -206,8 +206,8 @@ async def test_lookup_order_cross_scope_blocked(test_setup):
         operator_id="operator_dipto",
         order_id="ORD-101",
         allowed_action="refund_order",
-        max_amount=5000,
-        allowed_currency="USD",
+        max_amount=500000,
+        allowed_currency="BDT",
         allowed_destination="card_visa_4242",
         expires_at=expiry
     )
@@ -232,8 +232,8 @@ async def test_lookup_order_expired_scope_blocked(test_setup):
         operator_id="operator_dipto",
         order_id="ORD-101",
         allowed_action="refund_order",
-        max_amount=5000,
-        allowed_currency="USD",
+        max_amount=500000,
+        allowed_currency="BDT",
         allowed_destination="card_visa_4242",
         expires_at=past_expiry
     )
@@ -257,8 +257,8 @@ async def test_lookup_order_within_scope_allowed(test_setup):
         operator_id="operator_dipto",
         order_id="ORD-101",
         allowed_action="refund_order",
-        max_amount=5000,
-        allowed_currency="USD",
+        max_amount=500000,
+        allowed_currency="BDT",
         allowed_destination="card_visa_4242",
         expires_at=expiry
     )
@@ -266,7 +266,7 @@ async def test_lookup_order_within_scope_allowed(test_setup):
     assert call_res.is_error is False
     data = json.loads(call_res.content[0].text)
     assert data["order_id"] == "ORD-101"
-    assert data["paid_amount"] == 25000
+    assert data["paid_amount"] == 2500000
     assert "customer_name" not in data
     assert "original_destination" not in data
     assert data["masked_destination"] == "card...4242"

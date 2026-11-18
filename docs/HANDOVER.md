@@ -10,7 +10,7 @@ AetherGuard demonstrates policy enforcement and human review for agent-proposed 
 | `backend/app/agent/core.py`, `tickets.py` | Gemini proposal chain and sample tickets |
 | `backend/app/governance/mcp_server.py`, `boundary.py` | MCP tools, caller scope checks, verdicts, and governed execution |
 | `backend/app/approval/service.py`, `policy/engine.py` | Exact-action review and deterministic policy |
-| `backend/app/sandbox/db.py`, `service.py`, `exchange_rate.py` | SQLite schema, synthetic orders and refunds, compatibility migrations, and USD/BDT quotes |
+| `backend/app/sandbox/db.py`, `service.py` | SQLite schema, synthetic taka orders and refunds, and compatibility migrations |
 
 ## First working session
 
@@ -21,14 +21,14 @@ AetherGuard demonstrates policy enforcement and human review for agent-proposed 
 
 ## Maintenance
 
-- Preserve native currency amounts. When modifying policy, check the BDT conversion and cumulative scope budget at both proposal and approval.
+- Amounts are taka (integer poisha) only. When modifying policy, check the currency guard and cumulative scope budget at both proposal and approval.
 - Reuse a stable idempotency key for retries. After an uncertain response, inspect the existing action via `GET /api/governance/actions/lookup` before making another request.
 - Keep SQLite state outside Git. Back up using SQLite-aware tooling before migrations. Legacy authority may expire during initialization while recorded refunds are preserved.
 - Keep API, MCP wrapper, and approval checks aligned while accounting for their different entry points. The ticket path executes refunds within the auto-approve limit immediately, like the direct API; larger eligible refunds require review.
 
 ## Current limits and next work
 
-The console, deterministic evaluation, scope enforcement, and approval workflows have automated local coverage. Live Gemini behavior depends on account quota, model availability, and proposal quality. No production payment provider, per-user identity system, or tamper-resistant audit service is configured. A stale exchange rate can affect the BDT policy threshold. The deployment design still needs persistent storage and recovery, independently authenticated operators and reviewers, proxy configuration, and an isolated execution identity. See [Security](../SECURITY.md).
+The console, deterministic evaluation, scope enforcement, and approval workflows have automated local coverage. Live Gemini behavior depends on account quota, model availability, and proposal quality. No production payment provider, per-user identity system, or tamper-resistant audit service is configured. The deployment design still needs persistent storage and recovery, independently authenticated operators and reviewers, proxy configuration, and an isolated execution identity. See [Security](../SECURITY.md).
 
 ## Verification for this handover
 

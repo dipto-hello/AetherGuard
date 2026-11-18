@@ -1,39 +1,26 @@
-function rateMicros(bdtPerUsd?: number) {
-  if (!bdtPerUsd || !Number.isFinite(bdtPerUsd) || bdtPerUsd < 0.000001 || bdtPerUsd > 1_000_000) return null;
-  return BigInt(Math.round(bdtPerUsd * 1_000_000));
+import { parseTakaInput } from './orderMoney.ts';
+
+// Refund rules are stored and enforced in poisha; there is no currency conversion.
+export function limitInputToPoisha(value: string) {
+  const minor = parseTakaInput(value, 15);
+  return minor === null ? null : Number(minor);
 }
 
-export function policyLimitMinor(cents: number, currency: 'USD' | 'BDT', bdtPerUsd?: number) {
-  if (!Number.isSafeInteger(cents) || cents <= 0) return null;
-  let minor = BigInt(cents);
-  if (currency === 'BDT') {
-    const micros = rateMicros(bdtPerUsd);
-    if (micros === null) return null;
-    minor = minor * micros / 1_000_000n;
+export function formatPolicyLimit(poisha: number) {
+  if (!Number.isSafeInteger(poisha) || poisha <= 0) return null;
+  return formatMinor(BigInt(poisha));
+}
+
+// Formats integer minor units. Legacy non-BDT records from before the taka-only change keep their own code.
+export function formatMinor(minor: bigint, currency = 'BDT') {
+  let parts;
+  try {
+    parts = new Intl.NumberFormat('en-US', { style: 'currency', currency, currencyDisplay: 'narrowSymbol' })
+      .formatToParts(minor / 100n);
+  } catch {
+    return `${currency} ${minor / 100n}.${String(minor % 100n).padStart(2, '0')}`;
   }
-  return minor;
-}
-
-// Converts a typed limit to USD cents, rounding down so the enforced limit never exceeds what was typed.
-export function limitInputToUsdCents(value: string, currency: 'USD' | 'BDT', bdtPerUsd?: number) {
-  if (!/^\d{1,15}(?:\.\d{1,2})?$/.test(value)) return null;
-  const [whole, fraction = ''] = value.split('.');
-  const minor = BigInt(whole) * 100n + BigInt(fraction.padEnd(2, '0'));
-  if (currency === 'USD') return Number(minor);
-  const micros = rateMicros(bdtPerUsd);
-  return micros === null ? null : Number(minor * 1_000_000n / micros);
-}
-
-export function formatPolicyLimit(cents: number, currency: 'USD' | 'BDT', bdtPerUsd?: number) {
-  const minor = policyLimitMinor(cents, currency, bdtPerUsd);
-  if (minor === null) return null;
-  return formatMinor(minor, currency);
-}
-
-export function formatMinor(minor: bigint, currency: 'USD' | 'BDT') {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency', currency, currencyDisplay: 'narrowSymbol',
-  }).formatToParts(minor / 100n).map(({ type, value }) =>
+  return parts.map(({ type, value }) =>
     type === 'fraction' ? String(minor % 100n).padStart(2, '0') : value,
   ).join('');
 }

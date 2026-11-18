@@ -50,8 +50,8 @@ class SandboxIdempotencyTests(unittest.TestCase):
             def refund(key):
                 conn = get_connection(db_path)
                 try:
-                    result = execute_sandbox_refund(ConnectionAtReadBarrier(conn), "ORD-101", 1000,
-                                                    "USD", "card_visa_4242", key)
+                    result = execute_sandbox_refund(ConnectionAtReadBarrier(conn), "ORD-101", 100000,
+                                                    "BDT", "card_visa_4242", key)
                     outcomes.append(result)
                 except Exception as error:
                     outcomes.append(error)
@@ -68,7 +68,7 @@ class SandboxIdempotencyTests(unittest.TestCase):
             self.assertTrue(all(isinstance(result, dict) for result in outcomes), repr(outcomes))
             conn = get_connection(db_path)
             try:
-                self.assertEqual(get_order(conn, "ORD-101")["refundable_amount"], 23000)
+                self.assertEqual(get_order(conn, "ORD-101")["refundable_amount"], 2300000)
                 self.assertEqual(conn.execute("SELECT count(*) FROM refunds").fetchone()[0], 2)
             finally:
                 conn.close()
@@ -78,17 +78,17 @@ class SandboxIdempotencyTests(unittest.TestCase):
         self.addCleanup(conn.close)
         reset_synthetic_data(conn)
         conn.execute("BEGIN")
-        execute_sandbox_refund(conn, "ORD-101", 1000, "USD", "card_visa_4242", "rollback")
+        execute_sandbox_refund(conn, "ORD-101", 100000, "BDT", "card_visa_4242", "rollback")
         conn.rollback()
-        self.assertEqual(get_order(conn, "ORD-101")["refundable_amount"], 25000)
+        self.assertEqual(get_order(conn, "ORD-101")["refundable_amount"], 2500000)
         self.assertEqual(conn.execute("SELECT count(*) FROM refunds").fetchone()[0], 0)
 
     def test_reset_invalidates_scopes_and_pending_actions(self):
         conn = init_db(":memory:")
         self.addCleanup(conn.close)
         reset_synthetic_data(conn)
-        save_task_scope(conn, "scope", "operator", "ORD-101", "refund_order", 5000,
-                        "USD", "card_visa_4242", "2099-01-01T00:00:00+00:00")
+        save_task_scope(conn, "scope", "operator", "ORD-101", "refund_order", 500000,
+                        "BDT", "card_visa_4242", "209900-01-01T00:00:00+00:00")
         with conn:
             conn.execute("INSERT INTO pending_actions (action_id,tool,arguments,fingerprint,task_scope_id,status) VALUES ('a','refund_order','{}','hash','scope','pending')")
         reset_synthetic_data(conn)
@@ -99,8 +99,8 @@ class SandboxIdempotencyTests(unittest.TestCase):
         conn = init_db(":memory:")
         self.addCleanup(conn.close)
         reset_synthetic_data(conn)
-        first = execute_sandbox_refund(conn, "ORD-101", 1000, "USD", "card_visa_4242", "same")
-        self.assertEqual(first["id"], execute_sandbox_refund(conn, "ORD-101", 1000, "USD", "card_visa_4242", "same")["id"])
+        first = execute_sandbox_refund(conn, "ORD-101", 100000, "BDT", "card_visa_4242", "same")
+        self.assertEqual(first["id"], execute_sandbox_refund(conn, "ORD-101", 100000, "BDT", "card_visa_4242", "same")["id"])
         with self.assertRaises(DuplicateIdempotencyError):
-            execute_sandbox_refund(conn, "ORD-101", 2000, "USD", "card_visa_4242", "same")
-        self.assertEqual(get_order(conn, "ORD-101")["refundable_amount"], 24000)
+            execute_sandbox_refund(conn, "ORD-101", 200000, "BDT", "card_visa_4242", "same")
+        self.assertEqual(get_order(conn, "ORD-101")["refundable_amount"], 2400000)

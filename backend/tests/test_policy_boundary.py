@@ -6,17 +6,15 @@ from app.policy.models import TaskScope, PolicyConfig, PolicyVerdict
 from app.policy.engine import evaluate_policy
 from app.governance.boundary import GovernanceBoundary
 from app.approval.service import ApprovalError, decide_approval
-from app.sandbox import exchange_rate
 
 
 @pytest.mark.parametrize(("amount", "expected"), [
-    (155625, PolicyVerdict.ALLOWED),
-    (155626, PolicyVerdict.APPROVAL_REQUIRED),
-    (311250, PolicyVerdict.APPROVAL_REQUIRED),
-    (311251, PolicyVerdict.BLOCKED),
+    (1250, PolicyVerdict.ALLOWED),
+    (1251, PolicyVerdict.APPROVAL_REQUIRED),
+    (2500, PolicyVerdict.APPROVAL_REQUIRED),
+    (2501, PolicyVerdict.BLOCKED),
 ])
-def test_bdt_policy_thresholds_use_usd_quote(db_conn, monkeypatch, amount, expected):
-    monkeypatch.setattr(exchange_rate, "get_display_quote", lambda: {"bdt_per_usd": 124.50})
+def test_taka_thresholds_apply_directly_in_poisha(db_conn, amount, expected):
     scope = TaskScope(
         scope_id="bdt-scope", operator_id="operator", order_id="ORD-103",
         max_amount=500000, allowed_currency="BDT", allowed_destination="bkash_01711000000",
@@ -32,11 +30,21 @@ def test_bdt_policy_thresholds_use_usd_quote(db_conn, monkeypatch, amount, expec
     assert result["verdict"] == expected
     assert get_order(db_conn, scope.order_id)["refundable_amount"] == 500000 - (
         amount if expected == PolicyVerdict.ALLOWED else 0)
-    if amount == 311250:
-        monkeypatch.setattr(exchange_rate, "get_display_quote", lambda: {"bdt_per_usd": 124.49})
+    if amount == 2500:
+        stricter = PolicyConfig(auto_allow_threshold=1250, hard_ceiling_threshold=2499)
         with pytest.raises(ApprovalError, match="POLICY_HARD_CEILING"):
-            decide_approval(db_conn, result["action_id"], "approve", "operator", policy_config=policy)
+            decide_approval(db_conn, result["action_id"], "approve", "operator", policy_config=stricter)
         assert get_order(db_conn, scope.order_id)["refundable_amount"] == 500000
+
+
+@pytest.mark.parametrize("currency", ["USD", "EUR", "bdt", ""])
+def test_non_taka_refunds_are_blocked(currency):
+    order = {"currency": "BDT", "original_destination": "bkash_01711000000", "refundable_amount": 500000}
+    verdict, reason = evaluate_policy("refund_order", {
+        "order_id": "ORD-103", "amount": 100, "currency": currency, "destination": "bkash_01711000000",
+    }, order, None, PolicyConfig(enforce_task_scope=False))
+    assert verdict == PolicyVerdict.BLOCKED
+    assert reason.startswith("UNSUPPORTED_CURRENCY") or reason.startswith("VALIDATION_ERROR")
 
 @pytest.fixture
 def db_conn():
@@ -56,8 +64,8 @@ def valid_scope(db_conn):
         operator_id="operator_dipto",
         order_id="ORD-101",
         allowed_action="refund_order",
-        max_amount=30000,  # $300.00
-        allowed_currency="USD",
+        max_amount=3000000,  # ৳30,000
+        allowed_currency="BDT",
         allowed_destination="card_visa_4242",
         expires_at=datetime.now(timezone.utc) + timedelta(hours=1)
     )
@@ -66,15 +74,15 @@ def valid_scope(db_conn):
 
 def test_allowed_refund_within_scope_and_policy(boundary, db_conn, valid_scope):
     """
-    Low value ($40 = 4000 cents) within task scope and below auto-allow threshold ($50).
+    Low value (৳4,000 = 400000 poisha) within task scope and below auto-allow threshold (৳5,000).
     Verdict: ALLOW. Backend state must change.
     """
     action_payload = {
         "tool": "refund_order",
         "arguments": {
             "order_id": "ORD-101",
-            "amount": 4000,
-            "currency": "USD",
+            "amount": 400000,
+            "currency": "BDT",
             "destination": "card_visa_4242",
             "reason": "Customer received damaged product"
         },
@@ -85,23 +93,23 @@ def test_allowed_refund_within_scope_and_policy(boundary, db_conn, valid_scope):
     assert result["verdict"] == PolicyVerdict.ALLOWED.value
     assert result["executed"] is True
     assert result["refund"] is not None
-    assert result["refund"]["amount"] == 4000
+    assert result["refund"]["amount"] == 400000
 
     # Physical verification: backend state must be deducted
     order = get_order(db_conn, "ORD-101")
-    assert order["refundable_amount"] == 21000  # $250 - $40 = $210
+    assert order["refundable_amount"] == 2100000  # ৳25,000 - ৳4,000 = ৳21,000
 
 def test_approval_required_for_moderate_amount(boundary, db_conn, valid_scope):
     """
-    Moderate value ($250 = 25000 cents) within task scope, but exceeds auto-allow threshold ($50).
+    Moderate value (৳25,000 = 2500000 poisha) within task scope, but exceeds auto-allow threshold (৳5,000).
     Verdict: APPROVAL_REQUIRED. Backend state must NOT change.
     """
     action_payload = {
         "tool": "refund_order",
         "arguments": {
             "order_id": "ORD-101",
-            "amount": 25000,
-            "currency": "USD",
+            "amount": 2500000,
+            "currency": "BDT",
             "destination": "card_visa_4242",
             "reason": "Customer cancellation within 30 days"
         },
@@ -116,13 +124,13 @@ def test_approval_required_for_moderate_amount(boundary, db_conn, valid_scope):
 
     # Physical verification: backend state must remain completely UNTOUCHED
     order = get_order(db_conn, "ORD-101")
-    assert order["refundable_amount"] == 25000  # $250.00 intact
+    assert order["refundable_amount"] == 2500000  # ৳25,000 intact
 
 def test_hard_block_for_excessive_amount(boundary, db_conn):
     """
-    On high-value order (ORD-104, $5,000 balance), an excessive refund of $5,000
-    exceeds the system-wide hard policy ceiling ($1,000 = 100000 cents),
-    even though the order has enough balance and operator scope was set to $10,000.
+    On high-value order (ORD-104, ৳500,000 balance), an excessive refund of ৳500,000
+    exceeds the system-wide hard policy ceiling (৳100,000 = 10000000 poisha),
+    even though the order has enough balance and operator scope was set to ৳1,000,000.
     Verdict: BLOCKED (POLICY_HARD_CEILING). Backend state must NOT change.
     """
     loose_scope = TaskScope(
@@ -130,8 +138,8 @@ def test_hard_block_for_excessive_amount(boundary, db_conn):
         operator_id="operator_dipto",
         order_id="ORD-104",
         allowed_action="refund_order",
-        max_amount=1000000,  # $10,000.00 loose scope
-        allowed_currency="USD",
+        max_amount=100000000,  # ৳1,000,000 loose scope
+        allowed_currency="BDT",
         allowed_destination="wire_swift_chase",
         expires_at=datetime.now(timezone.utc) + timedelta(hours=1)
     )
@@ -141,8 +149,8 @@ def test_hard_block_for_excessive_amount(boundary, db_conn):
         "tool": "refund_order",
         "arguments": {
             "order_id": "ORD-104",
-            "amount": 500000,  # $5,000.00 > $1,000.00 ceiling
-            "currency": "USD",
+            "amount": 50000000,  # ৳500,000 > ৳100,000 ceiling
+            "currency": "BDT",
             "destination": "wire_swift_chase",
             "reason": "Massive refund"
         },
@@ -156,11 +164,11 @@ def test_hard_block_for_excessive_amount(boundary, db_conn):
 
     # Physical verification: backend state unchanged
     order = get_order(db_conn, "ORD-104")
-    assert order["refundable_amount"] == 500000
+    assert order["refundable_amount"] == 50000000
 
 def test_hard_block_for_action_outside_task_scope(boundary, db_conn, valid_scope):
     """
-    Low amount ($10 = 1000 cents), but on an order (ORD-102) NOT in trusted task scope (ORD-101).
+    Low amount (৳1,000 = 100000 poisha), but on an order (ORD-102) NOT in trusted task scope (ORD-101).
     A small refund outside scope MUST NOT silently execute!
     Verdict: BLOCKED.
     """
@@ -168,8 +176,8 @@ def test_hard_block_for_action_outside_task_scope(boundary, db_conn, valid_scope
         "tool": "refund_order",
         "arguments": {
             "order_id": "ORD-102",  # Outside task scope!
-            "amount": 1000,
-            "currency": "USD",
+            "amount": 100000,
+            "currency": "BDT",
             "destination": "card_mc_5555",
             "reason": "Unauthorized small refund"
         },
@@ -183,7 +191,7 @@ def test_hard_block_for_action_outside_task_scope(boundary, db_conn, valid_scope
 
     # Physical verification: ORD-102 balance unchanged
     order_102 = get_order(db_conn, "ORD-102")
-    assert order_102["refundable_amount"] == 4000
+    assert order_102["refundable_amount"] == 400000
 
 def test_hard_block_when_task_scope_expired(boundary, db_conn):
     """
@@ -195,8 +203,8 @@ def test_hard_block_when_task_scope_expired(boundary, db_conn):
         operator_id="operator_dipto",
         order_id="ORD-101",
         allowed_action="refund_order",
-        max_amount=10000,
-        allowed_currency="USD",
+        max_amount=1000000,
+        allowed_currency="BDT",
         allowed_destination="card_visa_4242",
         expires_at=datetime.now(timezone.utc) - timedelta(minutes=5)
     )
@@ -206,8 +214,8 @@ def test_hard_block_when_task_scope_expired(boundary, db_conn):
         "tool": "refund_order",
         "arguments": {
             "order_id": "ORD-101",
-            "amount": 2000,
-            "currency": "USD",
+            "amount": 200000,
+            "currency": "BDT",
             "destination": "card_visa_4242",
             "reason": "Test expired"
         },
@@ -227,8 +235,8 @@ def test_hard_block_destination_tampered(boundary, db_conn, valid_scope):
         "tool": "refund_order",
         "arguments": {
             "order_id": "ORD-101",
-            "amount": 2000,
-            "currency": "USD",
+            "amount": 200000,
+            "currency": "BDT",
             "destination": "attacker_crypto_account",
             "reason": "Payout diverted"
         },
@@ -263,8 +271,8 @@ def test_missing_policy_fails_closed(boundary, db_conn, valid_scope):
         "tool": "refund_order",
         "arguments": {
             "order_id": "ORD-101",
-            "amount": 1000,
-            "currency": "USD",
+            "amount": 100000,
+            "currency": "BDT",
             "destination": "card_visa_4242"
         },
         "idempotency_key": "idemp-failclosed-01"

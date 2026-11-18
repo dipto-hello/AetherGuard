@@ -21,8 +21,8 @@ class PolicyConfig:
         self.allowed_tools = ["refund_order"]
         self.enforce_task_scope = True
         self.require_exact_destination_match = True
-        self.auto_allow_threshold = 5000
-        self.hard_ceiling_threshold = 100000
+        self.auto_allow_threshold = 500000
+        self.hard_ceiling_threshold = 10000000
 
 
 class TaskScope:
@@ -36,6 +36,7 @@ class TaskScope:
 
 
 models = types.ModuleType("app.policy.models")
+models.SUPPORTED_CURRENCY = "BDT"
 models.PolicyVerdict = PolicyVerdict
 models.PolicyConfig = PolicyConfig
 models.TaskScope = TaskScope
@@ -52,10 +53,10 @@ class ApprovalPolicyChecks(unittest.TestCase):
     def setUp(self):
         self.assertIn("policy_config", inspect.signature(decide_approval).parameters)
         self.conn = init_db(":memory:")
-        self.args = {"order_id": "ORD-101", "amount": 10000, "currency": "USD", "destination": "card_visa_4242"}
+        self.args = {"order_id": "ORD-101", "amount": 1000000, "currency": "BDT", "destination": "card_visa_4242"}
         self.scope_id = "scope-test"
-        save_task_scope(self.conn, self.scope_id, "operator", "ORD-101", "refund_order", 20000,
-                        "USD", "card_visa_4242", (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat())
+        save_task_scope(self.conn, self.scope_id, "operator", "ORD-101", "refund_order", 2000000,
+                        "BDT", "card_visa_4242", (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat())
         fingerprint = hashlib.sha256(json.dumps({"tool": "refund_order", "arguments": self.args}, sort_keys=True).encode()).hexdigest()
         self.conn.execute("INSERT INTO action_requests (idempotency_key, fingerprint, scope_id, action_id) VALUES (?, ?, ?, ?)",
                           ("idemp-test", fingerprint, self.scope_id, "action-test"))
@@ -67,7 +68,7 @@ class ApprovalPolicyChecks(unittest.TestCase):
         self.conn.close()
 
     def assert_not_executed(self):
-        self.assertEqual(self.conn.execute("SELECT refundable_amount FROM orders WHERE id='ORD-101'").fetchone()[0], 25000)
+        self.assertEqual(self.conn.execute("SELECT refundable_amount FROM orders WHERE id='ORD-101'").fetchone()[0], 2500000)
         self.assertEqual(self.conn.execute("SELECT COUNT(*) FROM refunds").fetchone()[0], 0)
 
     def test_missing_scope_denies_approval(self):
@@ -79,7 +80,7 @@ class ApprovalPolicyChecks(unittest.TestCase):
 
     def test_tightened_policy_denies_approval(self):
         policy = PolicyConfig()
-        policy.hard_ceiling_threshold = 5000
+        policy.hard_ceiling_threshold = 500000
         with self.assertRaises(ApprovalError):
             decide_approval(self.conn, "action-test", "approve", "operator", policy_config=policy)
         self.assert_not_executed()
@@ -105,7 +106,7 @@ class ApprovalPolicyChecks(unittest.TestCase):
     def test_valid_scope_and_policy_allow_approval(self):
         result = decide_approval(self.conn, "action-test", "approve", "operator", policy_config=PolicyConfig())
         self.assertEqual(result["status"], "executed")
-        self.assertEqual(self.conn.execute("SELECT refundable_amount FROM orders WHERE id='ORD-101'").fetchone()[0], 15000)
+        self.assertEqual(self.conn.execute("SELECT refundable_amount FROM orders WHERE id='ORD-101'").fetchone()[0], 1500000)
 
     def test_audit_failure_rolls_back_refund_and_approval(self):
         self.conn.execute("CREATE TRIGGER fail_approval BEFORE INSERT ON audit_events WHEN NEW.verdict = 'APPROVED' BEGIN SELECT RAISE(ABORT, 'test audit failure'); END")

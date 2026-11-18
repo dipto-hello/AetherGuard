@@ -21,7 +21,7 @@ from app.approval.service import decide_approval
 async def test_concurrent_stdio_refunds_respect_scope_budget(temp_db_path):
     conn = init_db(temp_db_path)
     save_task_scope(conn, scope_id='concurrent', operator_id='test', order_id='ORD-101',
-                    allowed_action='refund_order', max_amount=4000, allowed_currency='USD',
+                    allowed_action='refund_order', max_amount=400000, allowed_currency='BDT',
                     allowed_destination='card_visa_4242',
                     expires_at=(datetime.now(timezone.utc) + timedelta(hours=1)).isoformat())
     conn.close()
@@ -32,7 +32,7 @@ async def test_concurrent_stdio_refunds_respect_scope_budget(temp_db_path):
             await session.initialize()
             async def refund(key):
                 result = await session.call_tool('refund_order', {
-                    'order_id': 'ORD-101', 'amount': 3000, 'currency': 'USD',
+                    'order_id': 'ORD-101', 'amount': 300000, 'currency': 'BDT',
                     'destination': 'card_visa_4242', 'reason': 'synthetic',
                     'scope_id': 'concurrent', 'idempotency_key': key,
                 })
@@ -41,7 +41,7 @@ async def test_concurrent_stdio_refunds_respect_scope_budget(temp_db_path):
             outcomes = await asyncio.gather(refund('one'), refund('two'))
     assert sorted(outcomes) == ['ALLOWED', 'BLOCKED']
     conn = init_db(temp_db_path)
-    assert get_order(conn, 'ORD-101')['refundable_amount'] == 22000
+    assert get_order(conn, 'ORD-101')['refundable_amount'] == 2200000
     conn.close()
 
 @pytest.fixture
@@ -64,7 +64,7 @@ async def test_mcp_stdio_tool_discovery_and_order_lookup(temp_db_path):
     expiry = (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()
     save_task_scope(
         conn=conn, scope_id="scope-stdio-lookup", operator_id="test_op", order_id="ORD-101",
-        allowed_action="refund_order", max_amount=5000, allowed_currency="USD",
+        allowed_action="refund_order", max_amount=500000, allowed_currency="BDT",
         allowed_destination="card_visa_4242", expires_at=expiry
     )
     conn.close()
@@ -91,7 +91,7 @@ async def test_mcp_stdio_tool_discovery_and_order_lookup(temp_db_path):
             data = json.loads(call_res.content[0].text)
             assert data["order_id"] == "ORD-101"
             assert "customer_name" not in data
-            assert data["refundable_amount"] == 25000
+            assert data["refundable_amount"] == 2500000
             assert "original_destination" not in data
             assert data["masked_destination"] == "card...4242"
 
@@ -111,8 +111,8 @@ async def test_mcp_stdio_refund_blocked_without_scope(temp_db_path):
                 "refund_order",
                 {
                     "order_id": "ORD-101",
-                    "amount": 2000,
-                    "currency": "USD",
+                    "amount": 200000,
+                    "currency": "BDT",
                     "destination": "card_visa_4242",
                     "reason": "Unscoped refund attempt", "idempotency_key": "stdio-unscoped"
                 }
@@ -124,7 +124,7 @@ async def test_mcp_stdio_refund_blocked_without_scope(temp_db_path):
     # Verify sandbox state untouched
     conn = init_db(temp_db_path)
     order = get_order(conn, "ORD-101")
-    assert order["refundable_amount"] == 25000
+    assert order["refundable_amount"] == 2500000
     conn.close()
 
 @pytest.mark.asyncio
@@ -138,8 +138,8 @@ async def test_mcp_stdio_refund_allowed_with_scope_executes(temp_db_path):
         operator_id="operator_dipto",
         order_id="ORD-101",
         allowed_action="refund_order",
-        max_amount=5000,
-        allowed_currency="USD",
+        max_amount=500000,
+        allowed_currency="BDT",
         allowed_destination="card_visa_4242",
         expires_at=expiry
     )
@@ -158,8 +158,8 @@ async def test_mcp_stdio_refund_allowed_with_scope_executes(temp_db_path):
                 "refund_order",
                 {
                     "order_id": "ORD-101",
-                    "amount": 3500,  # $35.00 <= $50 auto-allow
-                    "currency": "USD",
+                    "amount": 350000,  # ৳3,500 <= ৳5,000 auto-allow
+                    "currency": "BDT",
                     "destination": "card_visa_4242",
                     "reason": "Legitimate discount concession",
                     "scope_id": "scope-stdio-01", "idempotency_key": "stdio-allow"
@@ -169,17 +169,17 @@ async def test_mcp_stdio_refund_allowed_with_scope_executes(temp_db_path):
             result = json.loads(call_res.content[0].text)
             assert result["verdict"] == "ALLOWED"
             assert result["executed"] is True
-            assert result["refund"]["amount"] == 3500
+            assert result["refund"]["amount"] == 350000
 
     # Verify physical sandbox deduction
     conn = init_db(temp_db_path)
     order = get_order(conn, "ORD-101")
-    assert order["refundable_amount"] == 21500  # 25000 - 3500
+    assert order["refundable_amount"] == 2150000  # 2500000 - 350000
     conn.close()
 
 @pytest.mark.asyncio
 async def test_mcp_stdio_approval_required_and_resolution(temp_db_path):
-    # Pre-grant scope for up to $300
+    # Pre-grant scope for up to ৳30,000
     conn = init_db(temp_db_path)
     expiry = (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()
     save_task_scope(
@@ -188,8 +188,8 @@ async def test_mcp_stdio_approval_required_and_resolution(temp_db_path):
         operator_id="operator_dipto",
         order_id="ORD-101",
         allowed_action="refund_order",
-        max_amount=30000,
-        allowed_currency="USD",
+        max_amount=3000000,
+        allowed_currency="BDT",
         allowed_destination="card_visa_4242",
         expires_at=expiry
     )
@@ -206,13 +206,13 @@ async def test_mcp_stdio_approval_required_and_resolution(temp_db_path):
         async with ClientSession(read, write) as session:
             await session.initialize()
 
-            # Propose $150 refund ($150 > $50 auto-allow, <= $300 scope)
+            # Propose ৳15,000 refund (৳15,000 > ৳5,000 auto-allow, <= ৳30,000 scope)
             call_res = await session.call_tool(
                 "refund_order",
                 {
                     "order_id": "ORD-101",
-                    "amount": 15000,
-                    "currency": "USD",
+                    "amount": 1500000,
+                    "currency": "BDT",
                     "destination": "card_visa_4242",
                     "reason": "Damaged goods return",
                     "scope_id": "scope-stdio-02", "idempotency_key": "stdio-approval"
@@ -228,7 +228,7 @@ async def test_mcp_stdio_approval_required_and_resolution(temp_db_path):
     # Sandbox remains untouched prior to human approval
     conn = init_db(temp_db_path)
     order_before = get_order(conn, "ORD-101")
-    assert order_before["refundable_amount"] == 25000
+    assert order_before["refundable_amount"] == 2500000
 
     # Human operator reviews and approves via decide_approval
     resolution = decide_approval(
@@ -239,9 +239,9 @@ async def test_mcp_stdio_approval_required_and_resolution(temp_db_path):
         reason="Approved after inspecting damaged item photos"
     )
     assert resolution["status"] == "executed"
-    assert resolution["refund"]["amount"] == 15000
+    assert resolution["refund"]["amount"] == 1500000
 
     # Verify sandbox is now updated
     order_after = get_order(conn, "ORD-101")
-    assert order_after["refundable_amount"] == 10000  # 25000 - 15000
+    assert order_after["refundable_amount"] == 1000000  # 2500000 - 1500000
     conn.close()

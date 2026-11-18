@@ -8,7 +8,6 @@ from app.approval.service import ApprovalAlreadyProcessedError, decide_approval
 from app.governance.boundary import GovernanceBoundary
 from app.policy.models import PolicyConfig, TaskScope
 from app.sandbox.db import init_db
-from app.sandbox.exchange_rate import REFERENCE_RATE_MICROS
 from app.sandbox.service import save_task_scope
 from .cases import EVALUATION_CASES
 
@@ -51,14 +50,14 @@ def run_evaluation_suite() -> Dict[str, Any]:
             if case["category"] == "adversarial_replay":
                 replay_case = {
                     "tool": "refund_order",
-                    "scope": {"order_id": "ORD-104", "max_amount": 50000,
-                              "currency": "USD", "destination": "wire_swift_chase",
+                    "scope": {"order_id": "ORD-104", "max_amount": 5000000,
+                              "currency": "BDT", "destination": "wire_swift_chase",
                               "expires_in_hours": 1},
                 }
                 scope = _make_scope(conn, replay_case)
                 action = GovernanceBoundary(conn).intercept_and_evaluate(
                     {"tool": "refund_order", "arguments": {
-                        "order_id": "ORD-104", "amount": 25000, "currency": "USD",
+                        "order_id": "ORD-104", "amount": 2500000, "currency": "BDT",
                         "destination": "wire_swift_chase",
                     }}, task_scope=scope,
                 )
@@ -74,7 +73,7 @@ def run_evaluation_suite() -> Dict[str, Any]:
                 scope = _make_scope(conn, case)
                 before = _snapshot(conn)
                 policy = None if case.get("simulate_missing_policy") else PolicyConfig()
-                boundary = GovernanceBoundary(conn, policy_config=policy, bdt_rate_micros=REFERENCE_RATE_MICROS)
+                boundary = GovernanceBoundary(conn, policy_config=policy)
                 result = boundary.intercept_and_evaluate(
                     {"tool": case["tool"], "arguments": case["arguments"],
                      "idempotency_key": f"eval_{uuid.uuid4().hex}"},

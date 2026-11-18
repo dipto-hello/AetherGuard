@@ -17,7 +17,7 @@ AetherGuard is an AI agent governance prototype built for the International AI B
 
 ## How it works
 
-1. **Authorize a task.** The operator selects an order and grants a scope with a currency, original refund destination, cumulative amount limit, and expiry.
+1. **Authorize a task.** The operator selects an order and grants a scope with the original refund destination, cumulative amount limit, and expiry.
 2. **Judge the claim.** Gemini reviews the ticket and an optional evidence photo against a fixed refund policy (the company refunds shipping damage, wrong or missing items, non-delivery, and defects, but not damage the customer caused or a change of mind) and answers valid, unsure, or invalid. An invalid claim is blocked with `CLAIM_INVALID` and the judge's reason. An unsure claim (or a judge failure) still goes through every rule, but a refund the rules would allow waits in **Approvals** with the judge's reason instead of paying automatically.
 3. **Propose a refund.** Unless the claim is invalid, Gemini reads the English or Bengali ticket and proposes structured arguments. The backend calls the governed MCP refund tool.
 4. **Enforce policy.** The governance boundary checks the persisted scope, requested tool, balance, destination, currency, and amount. It records the verdict and uses an idempotency key to guard against duplicate action requests.
@@ -25,7 +25,7 @@ AetherGuard is an AI agent governance prototype built for the International AI B
 
 ### Refund rules
 
-Operators set two limits in USD on the **Refund rules** tab (defaults: $50 auto-approve, $1,000 maximum). For BDT orders the server converts them at its latest available exchange rate.
+All amounts are Bangladeshi taka (BDT), stored as integer poisha (৳1 = 100 poisha). Operators set two limits on the **Refund rules** tab (defaults: ৳5,000 auto-approve, ৳100,000 maximum). There is no currency conversion: any refund in another currency is blocked with `UNSUPPORTED_CURRENCY`.
 
 | Refund amount (after scope, balance, currency, and destination checks pass) | Result |
 | --- | --- |
@@ -107,7 +107,7 @@ See the [setup guide](docs/SETUP.md#configuration) for proxy, rate-limit, and st
 | --- | --- |
 | Run the offline checks | Open **Test results** and select **Run tests**. Each case uses a fresh in-memory database, so your demo orders stay as they are. |
 | Follow a ticket through review | With a Gemini key configured, open **Test a refund**, choose a sample ticket or write your own, optionally attach an **Evidence photo**, and set its **Refund permission** (tick **Give permission for this order**, then set the order, maximum, and destination). Without a permission every refund is blocked. The result shows the AI judge's verdict. A valid refund within the auto-approve limit executes immediately and shows the amount, destination, and balance left; a larger or judge-unsure refund appears in **Approvals**, where you see the exact amount, destination, and any judge note before deciding. An invalid claim is blocked. |
-| Confirm what changed | Compare **Activity** with **Order balances** after the decision. The ledger stores integer amounts in native minor units. USD policy thresholds are converted server-side for BDT enforcement. |
+| Confirm what changed | Compare **Activity** with **Order balances** after the decision. The ledger stores integer poisha, and refund limits are enforced directly in poisha. |
 
 ## MCP tools
 
@@ -122,7 +122,7 @@ See the [MCP implementation](backend/app/governance/mcp_server.py) and [executio
 
 ## Evaluation
 
-The [built-in suite](backend/app/evaluation/cases.py) tests expected policy decisions and observes balances and refund records. Cases include valid USD and BDT refunds, required approval, expiry, ceiling enforcement, and approval replay.
+The [built-in suite](backend/app/evaluation/cases.py) tests expected policy decisions and observes balances and refund records. Cases include valid English and Bengali taka refunds, required approval, expiry, ceiling enforcement, and approval replay.
 
 | Metric | Verified local run |
 | --- | ---: |
@@ -178,7 +178,8 @@ There is no deployment (CD) pipeline. CI verifies the code only; it does not bui
 - Ticket refunds the judge rates valid and within the auto-approve limit execute without human review, so a misjudged or misread ticket can pay out up to that limit and the scope maximum. Keep both low.
 - The HTTP API uses one shared operator credential. The in-process MCP server shares the application's database authority.
 - The AI claim judge can be fooled by edited, reused, or AI-generated photos and cannot check that a photo belongs to the order. It does not see an order's earlier refunds, so repeated small claims are judged one at a time. Its refund policy is a prompt fixed in code, so ambiguous wording can still be misread. Evidence photos are not stored; use synthetic photos only.
-- SQLite audit records are mutable by database writers. BDT thresholds depend on a cached rate with a dated fallback.
+- SQLite audit records are mutable by database writers.
+- Only taka is supported. Databases created before the taka-only change keep their USD orders and refunds as read-only history (see [Architecture](docs/ARCHITECTURE.md#data-and-trust)).
 - The project has a public repository. A project-wide license has yet to be selected.
 
 See [security reporting](SECURITY.md), [contribution guidelines](CONTRIBUTING.md), and the [developer handover](docs/HANDOVER.md).

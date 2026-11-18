@@ -37,8 +37,8 @@ def mcp_fixture():
 @pytest.mark.asyncio
 async def test_bola_unauthorized_high_value_order(mcp_fixture):
     """
-    Operator grants scope strictly for ORD-101 ($250).
-    Attacker probes high-value enterprise order ORD-104 ($5,000).
+    Operator grants scope strictly for ORD-101 (৳25,000).
+    Attacker probes high-value enterprise order ORD-104 (৳500,000).
     Must fail with OUTSIDE_TRUSTED_TASK_SCOPE, is_error=True, and log BLOCKED.
     """
     conn, server = mcp_fixture
@@ -49,8 +49,8 @@ async def test_bola_unauthorized_high_value_order(mcp_fixture):
         operator_id="operator_dipto",
         order_id="ORD-101",
         allowed_action="refund_order",
-        max_amount=5000,
-        allowed_currency="USD",
+        max_amount=500000,
+        allowed_currency="BDT",
         allowed_destination="card_visa_4242",
         expires_at=expiry
     )
@@ -96,8 +96,8 @@ async def test_bola_multi_tenant_multi_scope_isolation(mcp_fixture):
             operator_id="op",
             order_id=oid,
             allowed_action="refund_order",
-            max_amount=10000,
-            allowed_currency="USD",
+            max_amount=1000000,
+            allowed_currency="BDT",
             allowed_destination="card_visa_4242",
             expires_at=expiry
         )
@@ -137,8 +137,8 @@ async def test_bola_order_id_string_variations_blocked(mcp_fixture, tampered_id)
         operator_id="op",
         order_id="ORD-101",
         allowed_action="refund_order",
-        max_amount=5000,
-        allowed_currency="USD",
+        max_amount=500000,
+        allowed_currency="BDT",
         allowed_destination="card_visa_4242",
         expires_at=expiry
     )
@@ -172,8 +172,8 @@ async def test_expired_scope_rejection_at_various_intervals(mcp_fixture, delta, 
         operator_id="op",
         order_id="ORD-101",
         allowed_action="refund_order",
-        max_amount=5000,
-        allowed_currency="USD",
+        max_amount=500000,
+        allowed_currency="BDT",
         allowed_destination="card_visa_4242",
         expires_at=past_expiry
     )
@@ -205,8 +205,8 @@ async def test_scope_timezone_offset_handling(mcp_fixture):
         operator_id="op",
         order_id="ORD-101",
         allowed_action="refund_order",
-        max_amount=5000,
-        allowed_currency="USD",
+        max_amount=500000,
+        allowed_currency="BDT",
         allowed_destination="card_visa_4242",
         expires_at=past_in_tz
     )
@@ -223,8 +223,8 @@ async def test_scope_timezone_offset_handling(mcp_fixture):
         operator_id="op",
         order_id="ORD-101",
         allowed_action="refund_order",
-        max_amount=5000,
-        allowed_currency="USD",
+        max_amount=500000,
+        allowed_currency="BDT",
         allowed_destination="card_visa_4242",
         expires_at=future_in_tz
     )
@@ -261,8 +261,8 @@ async def test_malformed_and_missing_scope_ids(mcp_fixture, invalid_scope, expec
         operator_id="op",
         order_id="ORD-101",
         allowed_action="refund_order",
-        max_amount=5000,
-        allowed_currency="USD",
+        max_amount=500000,
+        allowed_currency="BDT",
         allowed_destination="card_visa_4242",
         expires_at=expiry
     )
@@ -314,8 +314,8 @@ async def test_sqli_in_order_id_blocked_and_safe(mcp_fixture, payload):
         operator_id="op",
         order_id="ORD-101",
         allowed_action="refund_order",
-        max_amount=5000,
-        allowed_currency="USD",
+        max_amount=500000,
+        allowed_currency="BDT",
         allowed_destination="card_visa_4242",
         expires_at=expiry
     )
@@ -351,8 +351,8 @@ async def test_sqli_in_scope_id_blocked_and_safe(mcp_fixture, payload):
         operator_id="op",
         order_id="ORD-101",
         allowed_action="refund_order",
-        max_amount=5000,
-        allowed_currency="USD",
+        max_amount=500000,
+        allowed_currency="BDT",
         allowed_destination="card_visa_4242",
         expires_at=expiry
     )
@@ -391,8 +391,8 @@ async def test_nonexistent_order_with_matching_scope(mcp_fixture):
         operator_id="op",
         order_id="ORD-999",
         allowed_action="refund_order",
-        max_amount=5000,
-        allowed_currency="USD",
+        max_amount=500000,
+        allowed_currency="BDT",
         allowed_destination="card_visa_4242",
         expires_at=expiry
     )
@@ -436,8 +436,8 @@ async def test_concurrent_lookup_stress_harness(mcp_fixture):
         operator_id="op",
         order_id="ORD-101",
         allowed_action="refund_order",
-        max_amount=5000,
-        allowed_currency="USD",
+        max_amount=500000,
+        allowed_currency="BDT",
         allowed_destination="card_visa_4242",
         expires_at=future_expiry
     )
@@ -447,8 +447,8 @@ async def test_concurrent_lookup_stress_harness(mcp_fixture):
         operator_id="op",
         order_id="ORD-101",
         allowed_action="refund_order",
-        max_amount=5000,
-        allowed_currency="USD",
+        max_amount=500000,
+        allowed_currency="BDT",
         allowed_destination="card_visa_4242",
         expires_at=past_expiry
     )
@@ -514,8 +514,8 @@ async def test_stdio_lookup_order_bola_blocked_over_transport():
             operator_id="test_op",
             order_id="ORD-101",
             allowed_action="refund_order",
-            max_amount=5000,
-            allowed_currency="USD",
+            max_amount=500000,
+            allowed_currency="BDT",
             allowed_destination="card_visa_4242",
             expires_at=expiry
         )
@@ -542,7 +542,7 @@ async def test_stdio_lookup_order_bola_blocked_over_transport():
                 assert valid_res.is_error is False
                 valid_body = json.loads(valid_res.content[0].text)
                 assert valid_body["order_id"] == "ORD-101"
-                assert valid_body["paid_amount"] == 25000
+                assert valid_body["paid_amount"] == 2500000
 
         # Check audit trail in physical SQLite file
         conn = init_db(db_path)
@@ -580,8 +580,8 @@ async def test_extreme_buffer_sizes_fail_safely(mcp_fixture):
         operator_id="test_op",
         order_id="ORD-101",
         allowed_action="refund_order",
-        max_amount=5000,
-        allowed_currency="USD",
+        max_amount=500000,
+        allowed_currency="BDT",
         allowed_destination="card_visa_4242",
         expires_at=expiry
     )
@@ -629,8 +629,8 @@ async def test_lookup_order_fails_closed_when_tool_not_allowed(mcp_fixture):
     restricted_policy = json.dumps({
         "version": "1.0.0",
         "allowed_tools": ["refund_order"],
-        "auto_allow_threshold": 5000,
-        "hard_ceiling_threshold": 100000,
+        "auto_allow_threshold": 500000,
+        "hard_ceiling_threshold": 10000000,
         "enforce_task_scope": True,
         "require_exact_destination_match": True
     })
@@ -647,7 +647,7 @@ async def test_lookup_order_fails_closed_on_audit_failure(mcp_fixture):
     expiry = (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()
     save_task_scope(
         conn=conn, scope_id="scope-audit-fail", operator_id="op", order_id="ORD-101",
-        allowed_action="refund_order", max_amount=5000, allowed_currency="USD",
+        allowed_action="refund_order", max_amount=500000, allowed_currency="BDT",
         allowed_destination="card_visa_4242", expires_at=expiry
     )
     # Simulate DB write failure on audit_events using native SQLite trigger
@@ -673,7 +673,7 @@ async def test_lookup_order_caller_identity_binding(mcp_fixture):
     expiry = (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()
     save_task_scope(
         conn=conn, scope_id="scope-bound-op", operator_id="operator_alice", order_id="ORD-101",
-        allowed_action="refund_order", max_amount=5000, allowed_currency="USD",
+        allowed_action="refund_order", max_amount=500000, allowed_currency="BDT",
         allowed_destination="card_visa_4242", expires_at=expiry
     )
     # Legitimate caller on Alice's authenticated session

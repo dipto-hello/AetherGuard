@@ -5,7 +5,6 @@ from typing import Optional
 import json
 import uuid
 from app.sandbox.db import get_connection, init_db
-from app.sandbox.exchange_rate import get_display_quote
 from app.sandbox.service import (
     get_order,
     list_orders,
@@ -57,10 +56,6 @@ def update_paid_amount(order_id: str, req: UpdatePaidAmount):
             return {"order": get_order(conn, order_id)}
     finally:
         conn.close()
-
-@router.get("/exchange-rate")
-def get_exchange_rate():
-    return get_display_quote()
 
 @router.get("/orders")
 def get_all_orders():

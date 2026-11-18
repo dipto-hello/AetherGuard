@@ -27,8 +27,8 @@ async def test_agent_processes_legitimate_english_ticket_auto_executes(test_setu
         operator_id="operator_dipto",
         order_id="ORD-101",
         allowed_action="refund_order",
-        max_amount=5000,  # $50.00 max
-        allowed_currency="USD",
+        max_amount=500000,  # ৳5,000 max
+        allowed_currency="BDT",
         allowed_destination="card_visa_4242",
         expires_at=datetime.now(timezone.utc) + timedelta(hours=2)
     )
@@ -39,13 +39,13 @@ async def test_agent_processes_legitimate_english_ticket_auto_executes(test_setu
 
     assert trace["language"] == "en"
     assert trace["parsed_parameters"]["order_id"] == "ORD-101"
-    assert trace["parsed_parameters"]["amount"] == 4000
+    assert trace["parsed_parameters"]["amount"] == 400000
     assert trace["boundary_verdict"] == PolicyVerdict.ALLOWED.value
     assert trace["executed"] is True
 
     # Within the auto-approve limit, the ticket pays out immediately
     order = get_order(conn, "ORD-101")
-    assert order["refundable_amount"] == 21000
+    assert order["refundable_amount"] == 2100000
 
 @pytest.mark.asyncio
 async def test_agent_processes_bengali_ticket_auto_executes(test_setup):
@@ -84,24 +84,24 @@ async def test_agent_processes_moderate_english_ticket_approval_required(test_se
         operator_id="operator_dipto",
         order_id="ORD-101",
         allowed_action="refund_order",
-        max_amount=30000,  # $300.00 max
-        allowed_currency="USD",
+        max_amount=3000000,  # ৳30,000 max
+        allowed_currency="BDT",
         allowed_destination="card_visa_4242",
         expires_at=datetime.now(timezone.utc) + timedelta(hours=2)
     )
 
     save_task_scope(conn, **scope_ord101.model_dump(mode='json'))
-    ticket = get_ticket("TICKET-EN-02")  # $250 refund
+    ticket = get_ticket("TICKET-EN-02")  # ৳25,000 refund
     trace = await agent.process_ticket(ticket["text"], task_scope=scope_ord101)
 
-    assert trace["parsed_parameters"]["amount"] == 25000
+    assert trace["parsed_parameters"]["amount"] == 2500000
     assert trace["boundary_verdict"] == PolicyVerdict.APPROVAL_REQUIRED.value
     assert trace["executed"] is False
     assert trace["pending_approval"] is True
 
     # Physical verification: backend state must remain untouched
     order = get_order(conn, "ORD-101")
-    assert order["refundable_amount"] == 25000
+    assert order["refundable_amount"] == 2500000
 
 @pytest.mark.asyncio
 async def test_agent_processes_adversarial_injection_hard_blocked(test_setup):
@@ -111,8 +111,8 @@ async def test_agent_processes_adversarial_injection_hard_blocked(test_setup):
         operator_id="operator_dipto",
         order_id="ORD-104",
         allowed_action="refund_order",
-        max_amount=1000000,
-        allowed_currency="USD",
+        max_amount=100000000,
+        allowed_currency="BDT",
         allowed_destination="wire_swift_chase",
         expires_at=datetime.now(timezone.utc) + timedelta(hours=2)
     )
@@ -127,7 +127,7 @@ async def test_agent_processes_adversarial_injection_hard_blocked(test_setup):
 
     # Physical verification: backend balance unchanged
     order = get_order(conn, "ORD-104")
-    assert order["refundable_amount"] == 500000
+    assert order["refundable_amount"] == 50000000
 
 @pytest.mark.asyncio
 async def test_agent_processes_scope_escalation_blocked(test_setup):
@@ -138,8 +138,8 @@ async def test_agent_processes_scope_escalation_blocked(test_setup):
         operator_id="operator_dipto",
         order_id="ORD-101",
         allowed_action="refund_order",
-        max_amount=5000,
-        allowed_currency="USD",
+        max_amount=500000,
+        allowed_currency="BDT",
         allowed_destination="card_visa_4242",
         expires_at=datetime.now(timezone.utc) + timedelta(hours=2)
     )
@@ -154,7 +154,7 @@ async def test_agent_processes_scope_escalation_blocked(test_setup):
 
     # Physical verification: ORD-102 balance unchanged
     order_102 = get_order(conn, "ORD-102")
-    assert order_102["refundable_amount"] == 4000
+    assert order_102["refundable_amount"] == 400000
 
 def test_agent_does_not_expose_sandbox_mutation_methods(test_setup):
     _, _, agent = test_setup
@@ -166,25 +166,25 @@ def test_agent_does_not_expose_sandbox_mutation_methods(test_setup):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize('ticket', [
-    'I paid $40 for order ORD-101; the package arrived.',
-    'I paid $40 for order ORD-101; I do not want a refund.',
-    'Please do not refund $40 for order ORD-101.',
-    'Refund request withdrawn. ORD-101 $40.',
+    'I paid ৳4,000 for order ORD-101; the package arrived.',
+    'I paid ৳4,000 for order ORD-101; I do not want a refund.',
+    'Please do not refund ৳4,000 for order ORD-101.',
+    'Refund request withdrawn. ORD-101 ৳4,000.',
 ])
 async def test_synthetic_parser_does_not_refund_without_positive_request(test_setup, ticket):
     conn, _, agent = test_setup
     scope = TaskScope(scope_id='no-refund', operator_id='operator', order_id='ORD-101',
-                      allowed_action='refund_order', max_amount=5000, allowed_currency='USD',
+                      allowed_action='refund_order', max_amount=500000, allowed_currency='BDT',
                       allowed_destination='card_visa_4242', expires_at=datetime.now(timezone.utc) + timedelta(hours=1))
     save_task_scope(conn, **scope.model_dump(mode='json'))
     trace = await agent.process_ticket(ticket, scope)
     assert trace['boundary_verdict'] == 'BLOCKED'
-    assert get_order(conn, 'ORD-101')['refundable_amount'] == 25000
+    assert get_order(conn, 'ORD-101')['refundable_amount'] == 2500000
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("ticket,currency,order_id,destination,initial_balance", [
-    ("Maybe refund $40 for ORD-101 if the customer agrees.", "USD", "ORD-101", "card_visa_4242", 25000),
+    ("Maybe refund ৳4,000 for ORD-101 if the customer agrees.", "BDT", "ORD-101", "card_visa_4242", 2500000),
     ("গ্রাহক রাজি হলে ORD-103 অর্ডারে ৪০ টাকা রিফান্ড দিন।", "BDT", "ORD-103", "bkash_01711000000", 500000),
     ("ORD-103-এর ৩০ টাকা refund রিফান্ড না দিন।", "BDT", "ORD-103", "bkash_01711000000", 500000),
     ("ORD-103-এর ৩০ টাকা রিফান্ড দিতে হবে না।", "BDT", "ORD-103", "bkash_01711000000", 500000),
@@ -195,7 +195,7 @@ async def test_conditional_refund_needs_clarification(
     conn, _, agent = test_setup
     scope = TaskScope(
         scope_id="conditional-refund", operator_id="operator", order_id=order_id,
-        max_amount=5000, allowed_currency=currency, allowed_destination=destination,
+        max_amount=500000, allowed_currency=currency, allowed_destination=destination,
         expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
     )
     save_task_scope(conn, **scope.model_dump(mode="json"))
@@ -211,39 +211,39 @@ async def test_conditional_refund_needs_clarification(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("message,code", [
-    ("Please refund $40 for order ORD-999.", "REFUND_INTENT_UNCLEAR"),
-    ("Please refund $40 for ORD-101 to card_other_0000.", "DESTINATION_MISMATCH"),
+    ("Please refund ৳4,000 for order ORD-999.", "REFUND_INTENT_UNCLEAR"),
+    ("Please refund ৳4,000 for ORD-101 to card_other_0000.", "DESTINATION_MISMATCH"),
 ])
 async def test_live_proposal_must_match_explicit_ticket_details(test_setup, monkeypatch, message, code):
     conn, _, agent = test_setup
     scope = TaskScope(scope_id="explicit-details", operator_id="operator", order_id="ORD-101",
-                      max_amount=5000, allowed_currency="USD", allowed_destination="card_visa_4242",
+                      max_amount=500000, allowed_currency="BDT", allowed_destination="card_visa_4242",
                       expires_at=datetime.now(timezone.utc) + timedelta(hours=1))
     save_task_scope(conn, **scope.model_dump(mode="json"))
     monkeypatch.setattr(agent, "_parse_ticket_llm", lambda *_args, **_kwargs: {
-        "tool": "refund_order", "order_id": "ORD-101", "currency": "USD",
-        "amount": 4000, "destination": "card_visa_4242", "language": "en",
+        "tool": "refund_order", "order_id": "ORD-101", "currency": "BDT",
+        "amount": 400000, "destination": "card_visa_4242", "language": "en",
     })
     result = await agent.process_ticket(message, task_scope=scope, api_key="test-provider")
     assert result["boundary_verdict"] == "BLOCKED"
     assert result["boundary_reason"].startswith(code + ":")
-    assert get_order(conn, "ORD-101")["refundable_amount"] == 25000
+    assert get_order(conn, "ORD-101")["refundable_amount"] == 2500000
 
 
 @pytest.mark.asyncio
 async def test_generated_overdraw_cannot_execute_if_model_shrinks_amount(test_setup, monkeypatch):
     conn, _, agent = test_setup
     scope = TaskScope(scope_id="exact-example", operator_id="operator", order_id="ORD-101",
-                      max_amount=25001, allowed_currency="USD", allowed_destination="card_visa_4242",
+                      max_amount=2500100, allowed_currency="BDT", allowed_destination="card_visa_4242",
                       expires_at=datetime.now(timezone.utc) + timedelta(hours=1))
     save_task_scope(conn, **scope.model_dump(mode="json"))
     monkeypatch.setattr(agent, "_parse_ticket_llm", lambda *_args, **_kwargs: {
-        "tool": "refund_order", "order_id": "ORD-101", "currency": "USD",
-        "amount": 4000, "destination": "card_visa_4242", "language": "en",
+        "tool": "refund_order", "order_id": "ORD-101", "currency": "BDT",
+        "amount": 400000, "destination": "card_visa_4242", "language": "en",
     })
-    trace = await agent.process_ticket("Refund $250.01 for ORD-101 to card_visa_4242.",
+    trace = await agent.process_ticket("Refund ৳25,001 for ORD-101 to card_visa_4242.",
                                        task_scope=scope, api_key="test-provider",
-                                       expected_amount=25001)
+                                       expected_amount=2500100)
     assert trace["boundary_reason"].startswith("REFUND_AMOUNT_MISMATCH:")
     assert not trace["executed"]
-    assert get_order(conn, "ORD-101")["refundable_amount"] == 25000
+    assert get_order(conn, "ORD-101")["refundable_amount"] == 2500000

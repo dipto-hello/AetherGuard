@@ -19,7 +19,7 @@ def setup_test():
     reset_synthetic_data(conn)
     boundary = GovernanceBoundary(conn)
 
-    # Setup valid task scope for ORD-101 up to $300 (30000 cents)
+    # Setup valid task scope for ORD-101 up to ৳30,000 (3000000 poisha)
     expiry = (datetime.now(timezone.utc) + timedelta(hours=2)).isoformat()
     save_task_scope(
         conn=conn,
@@ -27,8 +27,8 @@ def setup_test():
         operator_id="operator_dipto",
         order_id="ORD-101",
         allowed_action="refund_order",
-        max_amount=30000,
-        allowed_currency="USD",
+        max_amount=3000000,
+        allowed_currency="BDT",
         allowed_destination="card_visa_4242",
         expires_at=expiry
     )
@@ -42,20 +42,20 @@ def test_approve_exact_pending_action_executes_and_deducts_sandbox(setup_test):
         operator_id="operator_dipto",
         order_id="ORD-101",
         allowed_action="refund_order",
-        max_amount=30000,
-        allowed_currency="USD",
+        max_amount=3000000,
+        allowed_currency="BDT",
         allowed_destination="card_visa_4242",
         expires_at=datetime.now(timezone.utc) + timedelta(hours=2)
     )
 
-    # 1. Propose moderate refund ($250) requiring approval
+    # 1. Propose moderate refund (৳25,000) requiring approval
     eval_res = boundary.intercept_and_evaluate(
         {
             "tool": "refund_order",
             "arguments": {
                 "order_id": "ORD-101",
-                "amount": 25000,
-                "currency": "USD",
+                "amount": 2500000,
+                "currency": "BDT",
                 "destination": "card_visa_4242",
                 "reason": "Customer cancellation after review"
             },
@@ -74,7 +74,7 @@ def test_approve_exact_pending_action_executes_and_deducts_sandbox(setup_test):
 
     # Verify sandbox is UNCHANGED
     order_before = get_order(conn, "ORD-101")
-    assert order_before["refundable_amount"] == 25000
+    assert order_before["refundable_amount"] == 2500000
 
     # 2. Reviewer approves exact pending action
     approval_res = decide_approval(
@@ -85,7 +85,7 @@ def test_approve_exact_pending_action_executes_and_deducts_sandbox(setup_test):
     )
     assert approval_res["status"] == "executed"
     assert approval_res["refund"] is not None
-    assert approval_res["refund"]["amount"] == 25000
+    assert approval_res["refund"]["amount"] == 2500000
 
     # 3. Physical verification: backend state must be deducted
     order_after = get_order(conn, "ORD-101")
@@ -99,8 +99,8 @@ def test_reject_pending_action_leaves_sandbox_untouched(setup_test):
         operator_id="operator_dipto",
         order_id="ORD-101",
         allowed_action="refund_order",
-        max_amount=30000,
-        allowed_currency="USD",
+        max_amount=3000000,
+        allowed_currency="BDT",
         allowed_destination="card_visa_4242",
         expires_at=datetime.now(timezone.utc) + timedelta(hours=2)
     )
@@ -110,8 +110,8 @@ def test_reject_pending_action_leaves_sandbox_untouched(setup_test):
             "tool": "refund_order",
             "arguments": {
                 "order_id": "ORD-101",
-                "amount": 25000,
-                "currency": "USD",
+                "amount": 2500000,
+                "currency": "BDT",
                 "destination": "card_visa_4242",
                 "reason": "Suspicious request"
             },
@@ -134,7 +134,7 @@ def test_reject_pending_action_leaves_sandbox_untouched(setup_test):
 
     # Verify sandbox state is 100% UNTOUCHED
     order = get_order(conn, "ORD-101")
-    assert order["refundable_amount"] == 25000
+    assert order["refundable_amount"] == 2500000
 
 def test_replay_approval_cannot_execute_twice(setup_test):
     conn, boundary = setup_test
@@ -143,8 +143,8 @@ def test_replay_approval_cannot_execute_twice(setup_test):
         operator_id="operator_dipto",
         order_id="ORD-101",
         allowed_action="refund_order",
-        max_amount=30000,
-        allowed_currency="USD",
+        max_amount=3000000,
+        allowed_currency="BDT",
         allowed_destination="card_visa_4242",
         expires_at=datetime.now(timezone.utc) + timedelta(hours=2)
     )
@@ -154,8 +154,8 @@ def test_replay_approval_cannot_execute_twice(setup_test):
             "tool": "refund_order",
             "arguments": {
                 "order_id": "ORD-101",
-                "amount": 10000,  # $100.00
-                "currency": "USD",
+                "amount": 1000000,  # ৳10,000
+                "currency": "BDT",
                 "destination": "card_visa_4242"
             },
             "idempotency_key": "idemp-appr-003"
@@ -172,9 +172,9 @@ def test_replay_approval_cannot_execute_twice(setup_test):
     with pytest.raises(ApprovalAlreadyProcessedError):
         decide_approval(conn, action_id, "approve", "reviewer_sarah")
 
-    # Verify balance was only deducted ONCE ($250 - $100 = $150)
+    # Verify balance was only deducted ONCE (৳25,000 - ৳10,000 = ৳15,000)
     order = get_order(conn, "ORD-101")
-    assert order["refundable_amount"] == 15000
+    assert order["refundable_amount"] == 1500000
 
 def test_tampered_fingerprint_rejected(setup_test):
     conn, boundary = setup_test
@@ -183,8 +183,8 @@ def test_tampered_fingerprint_rejected(setup_test):
         operator_id="operator_dipto",
         order_id="ORD-101",
         allowed_action="refund_order",
-        max_amount=30000,
-        allowed_currency="USD",
+        max_amount=3000000,
+        allowed_currency="BDT",
         allowed_destination="card_visa_4242",
         expires_at=datetime.now(timezone.utc) + timedelta(hours=2)
     )
@@ -194,8 +194,8 @@ def test_tampered_fingerprint_rejected(setup_test):
             "tool": "refund_order",
             "arguments": {
                 "order_id": "ORD-101",
-                "amount": 25000,
-                "currency": "USD",
+                "amount": 2500000,
+                "currency": "BDT",
                 "destination": "card_visa_4242"
             },
             "idempotency_key": "idemp-appr-004"
@@ -208,7 +208,7 @@ def test_tampered_fingerprint_rejected(setup_test):
     with conn:
         conn.execute(
             "UPDATE pending_actions SET arguments = ? WHERE action_id = ?",
-            ('{"order_id": "ORD-101", "amount": 99999, "currency": "USD", "destination": "card_visa_4242"}', action_id)
+            ('{"order_id": "ORD-101", "amount": 9999900, "currency": "BDT", "destination": "card_visa_4242"}', action_id)
         )
 
     # Reviewer tries to approve, but fingerprint does not match tampered arguments!
@@ -236,8 +236,8 @@ def test_concurrent_duplicate_approval_prevention(tmp_path):
         operator_id="operator_dipto",
         order_id="ORD-101",
         allowed_action="refund_order",
-        max_amount=30000,
-        allowed_currency="USD",
+        max_amount=3000000,
+        allowed_currency="BDT",
         allowed_destination="card_visa_4242",
         expires_at=expiry
     )
@@ -247,8 +247,8 @@ def test_concurrent_duplicate_approval_prevention(tmp_path):
         operator_id="operator_dipto",
         order_id="ORD-101",
         allowed_action="refund_order",
-        max_amount=30000,
-        allowed_currency="USD",
+        max_amount=3000000,
+        allowed_currency="BDT",
         allowed_destination="card_visa_4242",
         expires_at=datetime.now(timezone.utc) + timedelta(hours=2)
     )
@@ -258,8 +258,8 @@ def test_concurrent_duplicate_approval_prevention(tmp_path):
             "tool": "refund_order",
             "arguments": {
                 "order_id": "ORD-101",
-                "amount": 10000,  # $100.00
-                "currency": "USD",
+                "amount": 1000000,  # ৳10,000
+                "currency": "BDT",
                 "destination": "card_visa_4242"
             },
             "idempotency_key": "idemp-appr-race-01"
@@ -294,9 +294,9 @@ def test_concurrent_duplicate_approval_prevention(tmp_path):
     assert len(results) == 1
     assert len(errors) == 1
 
-    # Backend balance deducted only ONCE ($250 - $100 = $150)
+    # Backend balance deducted only ONCE (৳25,000 - ৳10,000 = ৳15,000)
     order = get_order(init_conn, "ORD-101")
-    assert order["refundable_amount"] == 15000
+    assert order["refundable_amount"] == 1500000
     init_conn.close()
 
 def test_audit_records_match_actual_outcomes(setup_test):
