@@ -1,26 +1,18 @@
 import React, { useState } from 'react';
 import type { PolicyConfig } from '../types';
-import { updatePolicy, type fetchExchangeRate } from '../api';
-import { formatPolicyLimit, limitInputToUsdCents, policyLimitMinor } from '../policyMoney';
+import { updatePolicy } from '../api';
+import { formatPolicyLimit, limitInputToPoisha } from '../policyMoney';
 import { decimalAmount } from '../orderMoney';
 import { Sliders, Save, CheckCircle2, ShieldCheck, AlertOctagon } from 'lucide-react';
 
 interface PolicyManagerProps {
   policy: PolicyConfig;
-  currencyMode: 'USD' | 'BDT';
-  quote: Awaited<ReturnType<typeof fetchExchangeRate>> | null;
   onPolicyUpdated: (updated: PolicyConfig) => void;
 }
 
-export const PolicyManager: React.FC<PolicyManagerProps> = ({ policy, currencyMode, quote, onPolicyUpdated }) => {
-  // Keep the last good rate so a failed quote refresh does not wipe BDT edits in progress.
-  const [rate, setRate] = useState(quote?.bdt_per_usd);
-  if (quote && quote.bdt_per_usd !== rate) setRate(quote.bdt_per_usd);
-  const inputCurrency = currencyMode === 'BDT' && rate ? 'BDT' : 'USD';
-  const shown = (cents: number) => {
-    const minor = policyLimitMinor(cents, inputCurrency, rate);
-    return minor === null ? '' : decimalAmount(minor);
-  };
+export const PolicyManager: React.FC<PolicyManagerProps> = ({ policy, onPolicyUpdated }) => {
+  const shown = (poisha: number) =>
+    Number.isSafeInteger(poisha) && poisha > 0 ? decimalAmount(BigInt(poisha)) : '';
   const [autoAllow, setAutoAllow] = useState(shown(policy.auto_allow_threshold));
   const [hardCeiling, setHardCeiling] = useState(shown(policy.hard_ceiling_threshold));
   const [isSaving, setIsSaving] = useState<boolean>(false);
@@ -28,29 +20,21 @@ export const PolicyManager: React.FC<PolicyManagerProps> = ({ policy, currencyMo
   const [prevInputs, setPrevInputs] = useState({
     auto: policy.auto_allow_threshold,
     ceiling: policy.hard_ceiling_threshold,
-    inputCurrency,
-    rate,
   });
 
   if (
     prevInputs.auto !== policy.auto_allow_threshold ||
-    prevInputs.ceiling !== policy.hard_ceiling_threshold ||
-    prevInputs.inputCurrency !== inputCurrency ||
-    prevInputs.rate !== rate
+    prevInputs.ceiling !== policy.hard_ceiling_threshold
   ) {
-    setPrevInputs({ auto: policy.auto_allow_threshold, ceiling: policy.hard_ceiling_threshold, inputCurrency, rate });
+    setPrevInputs({ auto: policy.auto_allow_threshold, ceiling: policy.hard_ceiling_threshold });
     setAutoAllow(shown(policy.auto_allow_threshold));
     setHardCeiling(shown(policy.hard_ceiling_threshold));
   }
 
   const [saveError, setSaveError] = useState<string | null>(null);
-  // Inputs are in the displayed currency; the server stores USD cents.
-  const toUsdCents = (value: string, stored: number) => {
-    if (value === shown(stored)) return stored; // unchanged field keeps its exact USD value
-    return limitInputToUsdCents(value, inputCurrency, rate) ?? NaN;
-  };
-  const autoAmount = toUsdCents(autoAllow, policy.auto_allow_threshold);
-  const maximumAmount = toUsdCents(hardCeiling, policy.hard_ceiling_threshold);
+  // Inputs are taka; the server stores poisha.
+  const autoAmount = limitInputToPoisha(autoAllow) ?? NaN;
+  const maximumAmount = limitInputToPoisha(hardCeiling) ?? NaN;
   const validAmounts = [autoAmount, maximumAmount].every((amount) => Number.isSafeInteger(amount) && amount > 0);
   const inputError = !validAmounts
     ? 'Enter positive amounts with up to two decimal places.'
@@ -89,20 +73,13 @@ export const PolicyManager: React.FC<PolicyManagerProps> = ({ policy, currencyMo
               </h1>
             </div>
             <p className="text-sm text-slate-400">
-              Rules are stored in USD. BDT amounts you enter are converted to USD at the rate shown; BDT refunds are checked at the server's latest available rate.
+              All amounts are in Bangladeshi taka (BDT).
             </p>
           </div>
           <span className="self-start sm:self-auto text-xs font-mono px-3 py-1 rounded-full bg-brand-500/10 border border-brand-500/30 text-brand-400 font-semibold">
             Rule Version: {policy.version}
           </span>
         </div>
-        {currencyMode === 'BDT' && (
-          <p role="status" className="mb-5 text-xs text-slate-300">
-            {quote
-              ? <>1 USD = {quote.bdt_per_usd} BDT · {quote.as_of} · {quote.source === 'bangladesh_bank' ? 'Bangladesh Bank reference' : quote.stale ? 'Last available quote' : 'ExchangeRate-API'}</>
-              : 'BDT rate unavailable in this view. You can still edit the limits in USD.'}
-          </p>
-        )}
 
         {savedSuccess && (
           <div role="status" aria-live="polite" className="p-3 mb-4 rounded-lg bg-emerald-950/40 border border-emerald-800/60 text-xs text-emerald-300 flex items-center gap-2 font-mono">
@@ -117,17 +94,17 @@ export const PolicyManager: React.FC<PolicyManagerProps> = ({ policy, currencyMo
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                <span className="text-sm font-semibold text-white">Auto-Approve Limit ({currencyMode})</span>
+                <span className="text-sm font-semibold text-white">Auto-Approve Limit (BDT)</span>
               </div>
             </div>
             <p className="rule-amount text-2xl sm:text-3xl tracking-tight font-semibold text-emerald-300 break-all">
-              {formatPolicyLimit(policy.auto_allow_threshold, currencyMode, quote?.bdt_per_usd) ?? '—'}
+              {formatPolicyLimit(policy.auto_allow_threshold) ?? '—'}
             </p>
             <p className="text-xs text-slate-400 leading-relaxed">
               Within this limit, requests that pass scope and balance checks can execute automatically. Larger eligible requests need operator approval.
             </p>
             <label className="mt-auto grid gap-1.5 text-xs text-slate-300">
-              Edit auto-approve limit ({inputCurrency})
+              Edit auto-approve limit (BDT)
               <input
               type="text"
               inputMode="decimal"
@@ -143,17 +120,17 @@ export const PolicyManager: React.FC<PolicyManagerProps> = ({ policy, currencyMo
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <AlertOctagon className="w-4 h-4 text-red-400" />
-                <span className="text-sm font-semibold text-white">Maximum refund ({currencyMode})</span>
+                <span className="text-sm font-semibold text-white">Maximum refund (BDT)</span>
               </div>
             </div>
             <p className="rule-amount text-2xl sm:text-3xl tracking-tight font-semibold text-rose-300 break-all">
-              {formatPolicyLimit(policy.hard_ceiling_threshold, currencyMode, quote?.bdt_per_usd) ?? '—'}
+              {formatPolicyLimit(policy.hard_ceiling_threshold) ?? '—'}
             </p>
             <p className="text-xs text-slate-400 leading-relaxed">
               Requests above this amount are blocked.
             </p>
             <label className="mt-auto grid gap-1.5 text-xs text-slate-300">
-              Edit maximum refund ({inputCurrency})
+              Edit maximum refund (BDT)
               <input
               type="text"
               inputMode="decimal"

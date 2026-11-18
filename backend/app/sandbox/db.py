@@ -93,18 +93,18 @@ DEFAULT_SYNTHETIC_ORDERS = [
     {
         "id": "ORD-101",
         "customer_name": "Rahim Chowdhury",
-        "currency": "USD",
-        "paid_amount": 25000,  # $250.00
-        "refundable_amount": 25000,
+        "currency": "BDT",
+        "paid_amount": 2500000,  # ৳25,000.00 (in poisha)
+        "refundable_amount": 2500000,
         "original_destination": "card_visa_4242",
         "status": "paid"
     },
     {
         "id": "ORD-102",
         "customer_name": "Sarah Jenkins",
-        "currency": "USD",
-        "paid_amount": 4000,   # $40.00
-        "refundable_amount": 4000,
+        "currency": "BDT",
+        "paid_amount": 400000,   # ৳4,000.00
+        "refundable_amount": 400000,
         "original_destination": "card_mc_5555",
         "status": "paid"
     },
@@ -112,7 +112,7 @@ DEFAULT_SYNTHETIC_ORDERS = [
         "id": "ORD-103",
         "customer_name": "Tanvir Hasan",
         "currency": "BDT",
-        "paid_amount": 500000, # ৳5,000.00 (in poisha)
+        "paid_amount": 500000, # ৳5,000.00
         "refundable_amount": 500000,
         "original_destination": "bkash_01711000000",
         "status": "paid"
@@ -120,13 +120,48 @@ DEFAULT_SYNTHETIC_ORDERS = [
     {
         "id": "ORD-104",
         "customer_name": "Enterprise Client X",
-        "currency": "USD",
-        "paid_amount": 500000, # $5,000.00
-        "refundable_amount": 500000,
+        "currency": "BDT",
+        "paid_amount": 50000000, # ৳500,000.00
+        "refundable_amount": 50000000,
         "original_destination": "wire_swift_chase",
         "status": "paid"
     }
 ]
+
+# Thresholds were USD cents before taka-only policy. Old defaults map to the new defaults;
+# custom values convert at the last dated reference rate (৳124.42 per $1, 2026-11-10), rounded down.
+_LEGACY_USD_DEFAULTS = (5000, 100000)
+_NEW_BDT_DEFAULTS = (500_000, 10_000_000)
+_LEGACY_BDT_PER_USD_MICROS = 124_420_000
+
+
+def _migrate_to_bdt_only(conn: sqlite3.Connection, fresh_policy: bool) -> None:
+    """Retire USD authority. Recorded orders and refunds are kept unchanged as history."""
+    conn.execute("UPDATE task_scopes SET expires_at = '1970-01-01T00:00:00+00:00' WHERE allowed_currency != 'BDT'")
+    for action_id, arguments in conn.execute(
+            "SELECT action_id, arguments FROM pending_actions WHERE status = 'pending'").fetchall():
+        try:
+            currency = json.loads(arguments).get("currency")
+        except (ValueError, AttributeError):
+            currency = None
+        if currency != "BDT":
+            conn.execute("UPDATE pending_actions SET status = 'expired', reason = 'USD refunds are no longer supported' "
+                         "WHERE action_id = ?", (action_id,))
+    if fresh_policy:
+        return
+    row = conn.execute("SELECT config FROM policy_config WHERE id = 1").fetchone()
+    if not row:
+        return
+    try:
+        config = json.loads(row[0])
+        old = (int(config["auto_allow_threshold"]), int(config["hard_ceiling_threshold"]))
+    except (ValueError, TypeError, KeyError):
+        return  # Corrupt policy already fails closed; leave it for the operator.
+    new = _NEW_BDT_DEFAULTS if old == _LEGACY_USD_DEFAULTS else tuple(
+        max(1, v * _LEGACY_BDT_PER_USD_MICROS // 1_000_000) for v in old)
+    config["auto_allow_threshold"], config["hard_ceiling_threshold"] = new
+    conn.execute("UPDATE policy_config SET config = ? WHERE id = 1", (json.dumps(config),))
+
 
 def get_connection(db_path: Optional[str] = None) -> sqlite3.Connection:
     target = db_path or os.environ.get("AETHERGUARD_DB_PATH") or DEFAULT_DB_PATH
@@ -162,13 +197,16 @@ def init_db(db_path: Optional[str] = None) -> sqlite3.Connection:
             conn.execute("UPDATE task_scopes SET expires_at = '1970-01-01T00:00:00+00:00'")
             conn.execute("UPDATE pending_actions SET status = 'expired', reason = 'Scope budget upgraded; create a new scope' WHERE status = 'pending'")
             conn.execute("INSERT INTO schema_migrations (name) VALUES ('cumulative_scope_budget')")
+        if not conn.execute("SELECT 1 FROM schema_migrations WHERE name = 'bdt_only'").fetchone():
+            _migrate_to_bdt_only(conn, fresh_policy)
+            conn.execute("INSERT INTO schema_migrations (name) VALUES ('bdt_only')")
         if fresh_registry:
             conn.execute("UPDATE task_scopes SET expires_at = '1970-01-01T00:00:00+00:00'")
             conn.execute("UPDATE pending_actions SET status = 'expired', reason = 'Legacy action lacks a recoverable idempotency key' WHERE status = 'pending'")
         if fresh_policy:
             conn.execute("INSERT OR IGNORE INTO policy_config (id, config) VALUES (1, ?)",
                          (json.dumps({"version": "1.0.0", "allowed_tools": ["refund_order", "lookup_order"],
-                                      "auto_allow_threshold": 5000, "hard_ceiling_threshold": 100000,
+                                      "auto_allow_threshold": 500_000, "hard_ceiling_threshold": 10_000_000,
                                       "enforce_task_scope": True, "require_exact_destination_match": True}),))
         conn.execute("""INSERT OR IGNORE INTO action_requests
             (idempotency_key, fingerprint, scope_id, action_id)

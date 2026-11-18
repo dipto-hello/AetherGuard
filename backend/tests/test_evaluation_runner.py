@@ -29,7 +29,7 @@ def test_evaluation_measures_failed_decisions_and_backend_effects(monkeypatch):
     assert report["failed_cases"] == 1
     assert report["false_negative_rate"] == 100.0
     assert report["unauthorized_backend_writes"] == 1
-    assert report["cases"][0]["actual_backend_effect"] == "deducted_4000"
+    assert report["cases"][0]["actual_backend_effect"] == "deducted_400000"
 
 
 def test_fresh_database_is_seeded_without_resetting_existing_data(tmp_path):

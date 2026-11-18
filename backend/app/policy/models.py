@@ -6,6 +6,8 @@ from pydantic import BaseModel, Field
 import hashlib
 import json
 
+SUPPORTED_CURRENCY = "BDT"  # Taka only; amounts are integer poisha.
+
 class PolicyVerdict(str, Enum):
     ALLOWED = "ALLOWED"
     APPROVAL_REQUIRED = "APPROVAL_REQUIRED"
@@ -21,7 +23,7 @@ class TaskScope(BaseModel):
     order_id: str = Field(..., description="Specifically authorized order ID")
     allowed_action: str = Field("refund_order", description="Authorized tool name")
     max_amount: int = Field(..., gt=0, description="Maximum total refund amount for this scope, in integer minor units")
-    allowed_currency: str = Field("USD", description="Authorized 3-letter currency")
+    allowed_currency: str = Field(SUPPORTED_CURRENCY, description="Authorized currency (BDT only)")
     allowed_destination: str = Field(..., description="Authorized payment destination")
     expires_at: datetime = Field(..., description="Scope expiration timestamp in UTC")
 
@@ -35,8 +37,8 @@ class PolicyConfig(BaseModel):
     """Configurable Deterministic Policy Rules"""
     version: str = "1.0.0"
     allowed_tools: List[str] = Field(default_factory=lambda: ["refund_order", "lookup_order"])
-    auto_allow_threshold: int = Field(5000, description="Max amount for auto-allow (e.g. $50.00)")
-    hard_ceiling_threshold: int = Field(100000, description="Absolute ceiling before hard-block (e.g. $1,000.00)")
+    auto_allow_threshold: int = Field(500_000, description="Max amount for auto-allow in poisha (৳5,000.00)")
+    hard_ceiling_threshold: int = Field(10_000_000, description="Absolute ceiling before hard-block in poisha (৳100,000.00)")
     enforce_task_scope: bool = True
     require_exact_destination_match: bool = True
 

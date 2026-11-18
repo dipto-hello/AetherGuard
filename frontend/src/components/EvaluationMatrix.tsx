@@ -35,7 +35,7 @@ export const EvaluationMatrix: React.FC = () => {
               </h1>
             </div>
             <p className="text-sm text-slate-400">
-              Runs USD and BDT test cases with the default refund rules. Your orders stay as they are.
+              Runs taka (BDT) test cases with the default refund rules. Your orders stay as they are.
             </p>
           </div>
 

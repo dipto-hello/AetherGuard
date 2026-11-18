@@ -8,7 +8,6 @@ import type {
 } from './types';
 import {
   fetchOrders,
-  fetchExchangeRate,
   fetchRefunds,
   fetchPolicy,
   fetchPendingApprovals,
@@ -28,13 +27,9 @@ import { AlertCircle, RefreshCw, KeyRound, ShieldCheck } from 'lucide-react';
 
 export function App() {
   const [activeTab, setActiveTab] = useState<string>('arena');
-  const [currencyMode, setCurrencyMode] = useState<'USD' | 'BDT'>('USD');
   const [orders, setOrders] = useState<Order[]>([]);
   const [refunds, setRefunds] = useState<Refund[]>([]);
   const [policy, setPolicy] = useState<PolicyConfig | null>(null);
-  const [policyQuote, setPolicyQuote] = useState<Awaited<ReturnType<typeof fetchExchangeRate>> | null>(null);
-  const [quoteError, setQuoteError] = useState(false);
-  const [quoteRefresh, setQuoteRefresh] = useState(0);
   const [pendingActions, setPendingActions] = useState<PendingAction[]>([]);
   const [logs, setLogs] = useState<AuditEvent[]>([]);
 
@@ -123,21 +118,6 @@ export function App() {
       clearInterval(interval);
     };
   }, [authenticated, invalidateDashboard]);
-
-  useEffect(() => {
-    if (!authenticated) return;
-    const controller = new AbortController();
-    const refresh = () => {
-      void fetchExchangeRate(controller.signal).then((quote) => {
-        if (!controller.signal.aborted) { setPolicyQuote(quote); setQuoteError(false); }
-      }).catch(() => {
-        if (!controller.signal.aborted) { setPolicyQuote(null); setQuoteError(true); }
-      });
-    };
-    refresh();
-    const timer = setInterval(refresh, 60_000);
-    return () => { controller.abort(); clearInterval(timer); };
-  }, [authenticated, quoteRefresh]);
 
   const handleReset = async () => {
     if (!window.confirm('Restore synthetic order balances, clear refund history, and expire pending approvals and scopes?')) return;
@@ -233,8 +213,6 @@ export function App() {
     );
   }
 
-  const visibleApprovals = pendingActions.filter((action) => action.arguments?.currency === currencyMode);
-
   return (
     <div className="workspace-shell min-h-screen bg-background text-slate-100 flex flex-col font-sans selection:bg-brand-500 selection:text-slate-950">
       <a
@@ -249,13 +227,10 @@ export function App() {
         policy={policy}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        pendingCount={visibleApprovals.length}
+        pendingCount={pendingActions.length}
         onReset={handleReset}
         isResetting={isResetting}
         onChangeToken={handleDisconnect}
-        currencyMode={currencyMode}
-        bdtPerUsd={policyQuote?.bdt_per_usd}
-        setCurrencyMode={setCurrencyMode}
       />
 
       <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 outline-none">
@@ -289,17 +264,14 @@ export function App() {
                 unknownAttempt={unknownAttempt}
                 setUnknownAttempt={setUnknownAttempt}
                 onNavigateTab={(tab) => setActiveTab(tab)}
-                currencyMode={currencyMode}
                 orders={orders}
                 policy={policy}
-                bdtPerUsd={policyQuote?.bdt_per_usd}
               />
             </div>
 
             {activeTab === 'approvals' && (
               <ApprovalDesk
-                pendingActions={visibleApprovals}
-                currencyMode={currencyMode}
+                pendingActions={pendingActions}
                 onActionDecided={loadAllData}
                 onNavigateTab={(tab) => setActiveTab(tab)}
               />
@@ -312,8 +284,6 @@ export function App() {
             {activeTab === 'policy' && policy && (
               <PolicyManager
                 policy={policy}
-                currencyMode={currencyMode}
-                quote={policyQuote}
                 onPolicyUpdated={(p) => { setPolicy(p); void loadAllData(); }}
               />
             )}
@@ -326,14 +296,11 @@ export function App() {
               <SandboxViewer
                 orders={orders}
                 refunds={refunds}
-                quote={policyQuote}
-                quoteError={quoteError}
-                onRefresh={() => { void loadAllData(); setQuoteRefresh((count) => count + 1); }}
+                onRefresh={() => { void loadAllData(); }}
                 onOrderUpdated={(updated) => {
                   setOrders((current) => current.map((order) => order.id === updated.id ? updated : order));
                   void loadAllData();
                 }}
-                currencyMode={currencyMode}
               />
             )}
           </>

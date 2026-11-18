@@ -53,14 +53,6 @@ async function apiFetch(input: RequestInfo | URL, init: RequestInit = {}): Promi
   return response;
 }
 
-export async function fetchExchangeRate(signal: AbortSignal): Promise<{
-  bdt_per_usd: number; as_of: string; source: 'exchange_rate_api' | 'bangladesh_bank'; stale: boolean;
-}> {
-  const response = await apiFetch('/api/sandbox/exchange-rate', { signal });
-  if (!response.ok) throw new Error('Could not load the exchange rate.');
-  return response.json();
-}
-
 export async function fetchOrders(): Promise<Order[]> {
   const res = await apiFetch(`/api/sandbox/orders`);
   if (!res.ok) throw new Error(await extractErrorMessage(res, 'Failed to fetch sandbox orders'));

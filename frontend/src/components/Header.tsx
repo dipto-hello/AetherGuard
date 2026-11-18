@@ -12,9 +12,6 @@ interface HeaderProps {
   onReset: () => void;
   isResetting: boolean;
   onChangeToken?: () => void;
-  currencyMode: 'USD' | 'BDT';
-  bdtPerUsd?: number;
-  setCurrencyMode: (mode: 'USD' | 'BDT') => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -25,9 +22,6 @@ export const Header: React.FC<HeaderProps> = ({
   onReset,
   isResetting,
   onChangeToken,
-  currencyMode,
-  bdtPerUsd,
-  setCurrencyMode
 }) => {
   const tabs = [
     { id: 'arena', label: 'Test a refund', icon: FlaskConical, badge: null },
@@ -38,7 +32,7 @@ export const Header: React.FC<HeaderProps> = ({
     { id: 'sandbox', label: 'Order balances', icon: Wallet, badge: null },
   ];
 
-  const formatLimit = (amount: number) => formatPolicyLimit(amount, currencyMode, bdtPerUsd) ?? '—';
+  const formatLimit = (amount: number) => formatPolicyLimit(amount) ?? '—';
 
   return (
     <header className="app-header border-b border-borderSubtle sm:sticky top-0 z-50">
@@ -80,35 +74,9 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
             )}
 
-            {/* Currency Mode Switcher Pill */}
-            <div className="flex items-center bg-surfaceCard border border-borderStrong rounded-lg p-0.5" role="group" aria-label="Currency">
-              <button
-                type="button"
-                aria-pressed={currencyMode === 'USD'}
-                onClick={() => setCurrencyMode('USD')}
-                className={`px-2.5 py-1 rounded-md text-xs font-bold transition flex items-center gap-1 ${
-                  currencyMode === 'USD'
-                    ? 'bg-brand-400 text-slate-950 shadow-sm'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-                title="Show USD scenarios"
-              >
-                <span>USD ($)</span>
-              </button>
-              <button
-                type="button"
-                aria-pressed={currencyMode === 'BDT'}
-                onClick={() => setCurrencyMode('BDT')}
-                className={`px-2.5 py-1 rounded-md text-xs font-bold transition flex items-center gap-1 ${
-                  currencyMode === 'BDT'
-                    ? 'bg-brand-400 text-slate-950 shadow-sm'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-                title="Show BDT scenarios"
-              >
-                <span>BDT (৳)</span>
-              </button>
-            </div>
+            <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-surfaceCard border border-borderStrong text-slate-200" title="All amounts are Bangladeshi taka">
+              BDT (৳)
+            </span>
 
             <button
               onClick={onReset}

@@ -39,7 +39,7 @@ async def test_llm_timeout_fails_closed_without_regex_fallback(monkeypatch):
             order_id="ORD-101",
             allowed_action="refund_order",
             max_amount=5000,
-            allowed_currency="USD",
+            allowed_currency="BDT",
             allowed_destination="card_visa_4242",
             expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
         )
@@ -123,7 +123,7 @@ async def test_mcp_lookup_order_audited_and_error_flags():
         expiry = (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()
         save_task_scope(
             conn=conn, scope_id="scope-audit-check", operator_id="test_op", order_id="ORD-101",
-            allowed_action="refund_order", max_amount=5000, allowed_currency="USD",
+            allowed_action="refund_order", max_amount=5000, allowed_currency="BDT",
             allowed_destination="card_visa_4242", expires_at=expiry
         )
         audit_count_before = conn.execute("SELECT COUNT(*) FROM audit_events").fetchone()[0]
@@ -135,7 +135,7 @@ async def test_mcp_lookup_order_audited_and_error_flags():
         # B. lookup_order on non-existent order must return is_error=True
         save_task_scope(
             conn=conn, scope_id="scope-missing-check", operator_id="test_op", order_id="ORD-NONEXISTENT",
-            allowed_action="refund_order", max_amount=5000, allowed_currency="USD",
+            allowed_action="refund_order", max_amount=5000, allowed_currency="BDT",
             allowed_destination="card_visa_4242", expires_at=expiry
         )
         missing_res = await server.call_tool("lookup_order", {"order_id": "ORD-NONEXISTENT", "scope_id": "scope-missing-check", "caller_id": "test_op"})
@@ -145,7 +145,7 @@ async def test_mcp_lookup_order_audited_and_error_flags():
         bad_refund = await server.call_tool("refund_order", {
             "order_id": "ORD-101",
             "amount": 1000,
-            "currency": "USD",
+            "currency": "BDT",
             "destination": "card_visa_4242",
             "reason": "test",
             "idempotency_key": ""

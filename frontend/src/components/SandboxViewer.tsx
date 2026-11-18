@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { type fetchExchangeRate, updateOrderPaidAmount } from '../api';
+import { updateOrderPaidAmount } from '../api';
 import type { Order, Refund } from '../types';
 import { Database, RefreshCw, CreditCard, CheckCircle } from 'lucide-react';
-import { convertOrderMinor, decimalAmount, maxOrderMinor, orderTotalFromInput, type Currency } from '../orderMoney';
+import { decimalAmount, maxOrderMinor, parseTakaInput } from '../orderMoney';
 import { formatMinor } from '../policyMoney';
 
 interface SandboxViewerProps {
@@ -10,25 +10,12 @@ interface SandboxViewerProps {
   refunds: Refund[];
   onRefresh: () => void;
   onOrderUpdated: (order: Order) => void;
-  currencyMode: Currency;
-  quote: Awaited<ReturnType<typeof fetchExchangeRate>> | null;
-  quoteError: boolean;
 }
 
-function PaidAmountEditor({ order, onSaved, currency, rate }: {
-  order: Order & { currency: Currency };
-  onSaved: (order: Order) => void;
-  currency: Currency;
-  rate?: number;
-}) {
-  const [draft, setDraft] = useState<{
-    order: Order;
-    input?: { value: string; currency: Currency; rate?: number };
-  } | null>(null);
+function PaidAmountEditor({ order, onSaved }: { order: Order; onSaved: (order: Order) => void }) {
+  const [draft, setDraft] = useState<{ order: Order; input?: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
-  const foreign = order.currency !== currency;
-  const project = (minor: bigint) => convertOrderMinor(minor, order.currency, currency, rate);
   if (!draft) return (
     <div>
       <button type="button" className="text-xs text-brand-300 underline" onClick={() => {
@@ -39,19 +26,10 @@ function PaidAmountEditor({ order, onSaved, currency, rate }: {
     </div>
   );
   const stored = BigInt(draft.order.paid_amount);
-  const paid = draft.input
-    ? orderTotalFromInput(draft.input.value, stored, draft.input.currency, order.currency, draft.input.rate)
-    : stored;
-  const displayPaid = paid === null ? null : project(paid);
-  const value = draft.input?.currency === currency && (!foreign || draft.input.rate === rate)
-    ? draft.input.value : displayPaid === null ? '' : decimalAmount(displayPaid);
+  const paid = draft.input === undefined ? stored : parseTakaInput(draft.input);
+  const value = draft.input ?? decimalAmount(stored);
   const refunded = BigInt(draft.order.paid_amount - draft.order.refundable_amount);
-  const canConvert = project(0n) !== null;
-  const valid = canConvert && paid !== null && paid > 0n && paid <= maxOrderMinor && paid >= refunded;
-  const format = (minor: bigint) => {
-    const converted = project(minor);
-    return converted === null ? '—' : (foreign ? '≈ ' : '') + formatMinor(converted, currency);
-  };
+  const valid = paid !== null && paid > 0n && paid <= maxOrderMinor && paid >= refunded;
   return (
     <form className="space-y-2" onSubmit={async (event) => {
       event.preventDefault();
@@ -69,16 +47,14 @@ function PaidAmountEditor({ order, onSaved, currency, rate }: {
       }
     }}>
       <label className="block text-xs text-slate-200">
-        Paid total ({currency})
-        <input type="text" inputMode="decimal" maxLength={23} value={value} disabled={saving || !canConvert}
-          onChange={(event) => { setDraft({ ...draft, input: { value: event.target.value, currency, rate } }); setMessage(''); }}
+        Paid total (BDT)
+        <input type="text" inputMode="decimal" maxLength={23} value={value} disabled={saving}
+          onChange={(event) => { setDraft({ ...draft, input: event.target.value }); setMessage(''); }}
           className="mt-1 w-full rounded-lg border border-borderStrong bg-surface p-2 text-sm" />
       </label>
-      <p className="text-xs text-slate-400">Already refunded: {format(refunded)}.</p>
-      {valid && <p className="text-xs text-slate-300">Left to refund after saving: {format(paid - refunded)}.</p>}
-      {foreign && canConvert && <p className="text-xs text-slate-400">Converted totals are rounded to the nearest {order.currency === 'USD' ? 'cent' : 'poisha'} when saved.</p>}
-      {!canConvert && <p className="text-xs text-amber-200">An exchange rate is needed to edit in {currency}. Refresh or switch to {order.currency}.</p>}
-      {canConvert && !valid && <p className="text-xs text-rose-300">Enter a positive amount with up to two decimals. The saved total must cover existing refunds and fit the order’s supported range.</p>}
+      <p className="text-xs text-slate-400">Already refunded: {formatMinor(refunded)}.</p>
+      {valid && <p className="text-xs text-slate-300">Left to refund after saving: {formatMinor(paid - refunded)}.</p>}
+      {!valid && <p className="text-xs text-rose-300">Enter a positive amount with up to two decimals. The saved total must cover existing refunds and fit the order’s supported range.</p>}
       {message && <p role="alert" className="text-xs text-rose-300">{message}</p>}
       <div className="flex gap-2 text-xs">
         <button type="submit" disabled={saving || !valid} className="rounded bg-brand-400 px-2.5 py-1.5 font-bold text-slate-950 disabled:opacity-50">{saving ? 'Saving…' : 'Save total'}</button>
@@ -88,12 +64,10 @@ function PaidAmountEditor({ order, onSaved, currency, rate }: {
   );
 }
 
-export const SandboxViewer: React.FC<SandboxViewerProps> = ({ orders, refunds, onRefresh, onOrderUpdated, currencyMode, quote, quoteError }) => {
-  const formatCurrency = (source: string, minor: number) => {
-    if (source !== 'USD' && source !== 'BDT') return '—';
-    const converted = convertOrderMinor(BigInt(minor), source, currencyMode, quote?.bdt_per_usd);
-    return converted === null ? '—' : (source !== currencyMode ? '≈ ' : '') + formatMinor(converted, currencyMode);
-  };
+export const SandboxViewer: React.FC<SandboxViewerProps> = ({ orders, refunds, onRefresh, onOrderUpdated }) => {
+  // Legacy non-BDT records from before the taka-only change are shown in their own currency, read-only.
+  const formatCurrency = (currency: string, minor: number) =>
+    Number.isSafeInteger(minor) ? formatMinor(BigInt(minor), currency) : '—';
 
   return (
     <div className="space-y-6">
@@ -108,7 +82,7 @@ export const SandboxViewer: React.FC<SandboxViewerProps> = ({ orders, refunds, o
               </h1>
             </div>
             <p className="text-sm text-slate-400">
-              View and edit totals in {currencyMode}. The order’s original currency is used for refunds.
+              All amounts are in Bangladeshi taka (BDT).
             </p>
           </div>
           <button
@@ -122,15 +96,6 @@ export const SandboxViewer: React.FC<SandboxViewerProps> = ({ orders, refunds, o
           </button>
         </div>
 
-        <p className="mb-4 text-xs text-slate-400" role="status">
-          {quote ? (
-            <>1 USD = {quote.bdt_per_usd} BDT · {quote.as_of}{quote.stale ? ' · Reference rate' : ''} ·{' '}
-              {quote.source === 'exchange_rate_api'
-                ? <a className="underline" href="https://www.exchangerate-api.com">Rates by Exchange Rate API</a>
-                : <a className="underline" href="https://www.bb.org.bd/econdata/exchange_rate/exchange_rate_10_11_2026.pdf">Bangladesh Bank</a>}
-            </>
-          ) : quoteError ? 'Exchange rate unavailable. Refresh to try again.' : 'Loading the exchange rate…'}
-        </p>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
           {orders.length === 0 && <p className="text-sm text-slate-400">No orders to show.</p>}
           {orders.map((ord) => {
@@ -142,7 +107,7 @@ export const SandboxViewer: React.FC<SandboxViewerProps> = ({ orders, refunds, o
                 className="p-4 rounded-xl bg-background border border-borderSubtle space-y-3 shadow-sm"
               >
                 <div className="flex items-center justify-between">
-                  <span className="font-mono text-sm font-bold text-white">{ord.id} <span className="text-xs text-slate-400">{ord.currency === currencyMode ? null : `Paid in ${ord.currency}`}</span></span>
+                  <span className="font-mono text-sm font-bold text-white">{ord.id} <span className="text-xs text-slate-400">{ord.currency === 'BDT' ? null : `Legacy ${ord.currency} · not refundable`}</span></span>
                   <span
                     className={`text-[10px] uppercase px-2 py-0.5 rounded-full font-bold font-mono ${
                       ord.status === 'paid'
@@ -185,10 +150,7 @@ export const SandboxViewer: React.FC<SandboxViewerProps> = ({ orders, refunds, o
                     <span>{percentage}% left</span>
                   </div>
                 </div>
-                {(ord.currency === 'USD' || ord.currency === 'BDT') && (
-                  <PaidAmountEditor order={{ ...ord, currency: ord.currency }} onSaved={onOrderUpdated}
-                    currency={currencyMode} rate={quote?.bdt_per_usd} />
-                )}
+                {ord.currency === 'BDT' && <PaidAmountEditor order={ord} onSaved={onOrderUpdated} />}
               </div>
             );
           })}
@@ -205,7 +167,7 @@ export const SandboxViewer: React.FC<SandboxViewerProps> = ({ orders, refunds, o
             </h3>
           </div>
           <span className="text-xs font-mono text-slate-400">
-            {currencyMode} refund history
+            BDT refund history
           </span>
         </div>
 

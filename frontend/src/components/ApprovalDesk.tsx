@@ -1,18 +1,17 @@
 import React, { useState, useRef } from 'react';
 import type { PendingAction } from '../types';
 import { decideApproval } from '../api';
+import { formatMinor } from '../policyMoney';
 import { AnimatePresence, motion } from 'motion/react';
 
 interface ApprovalDeskProps {
   pendingActions: PendingAction[];
-  currencyMode: 'USD' | 'BDT';
   onActionDecided: () => void | Promise<void>;
   onNavigateTab?: (tab: string) => void;
 }
 
 export const ApprovalDesk: React.FC<ApprovalDeskProps> = ({
   pendingActions,
-  currencyMode,
   onActionDecided,
   onNavigateTab
 }) => {
@@ -67,15 +66,15 @@ export const ApprovalDesk: React.FC<ApprovalDeskProps> = ({
       <div className="mt-6 space-y-3">
         {pendingActions.length === 0 && (
           <div className="rounded-xl border border-borderSubtle bg-surface p-5">
-            <p className="font-semibold text-white">No {currencyMode} refunds waiting for approval</p>
+            <p className="font-semibold text-white">No refunds waiting for approval</p>
             {onNavigateTab && <button className="mt-2 text-sm text-brand-300 underline" onClick={() => onNavigateTab('arena')}>Test a refund</button>}
           </div>
         )}
         <AnimatePresence initial={false}>
         {pendingActions.map((action) => {
-          const currency = action.arguments?.currency ?? 'USD';
-          const symbol = currency === 'BDT' ? '৳' : currency === 'USD' ? '$' : currency + ' ';
-          const amount = symbol + ((action.arguments?.amount ?? 0) / 100).toFixed(2);
+          const rawAmount = action.arguments?.amount;
+          const amount = Number.isSafeInteger(rawAmount)
+            ? formatMinor(BigInt(rawAmount as number), action.arguments?.currency ?? 'BDT') : 'Unknown amount';
           const order = action.arguments?.order_id || 'Unknown';
           return (
             <motion.article

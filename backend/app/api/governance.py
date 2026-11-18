@@ -1,7 +1,7 @@
 """Governance Boundary REST API Routes"""
 from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel, Field
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Literal
 from datetime import datetime, timedelta, timezone
 import uuid
 import json
@@ -27,7 +27,7 @@ class CreateScopeRequest(BaseModel):
     order_id: str = Field(..., description="Specifically authorized order ID")
     allowed_action: str = Field("refund_order", description="Authorized tool name")
     max_amount: int = Field(..., gt=0, description="Max amount in minor units authorized for this task")
-    allowed_currency: str = Field("USD", description="Authorized currency")
+    allowed_currency: Literal["BDT"] = Field("BDT", description="Authorized currency (BDT only)")
     allowed_destination: str = Field(..., description="Authorized payment destination")
     expires_in_hours: int = Field(2, gt=0, le=24, description="Scope validity window in hours")
 
@@ -38,8 +38,8 @@ class InterceptActionRequest(BaseModel):
     idempotency_key: str = Field(..., min_length=1, max_length=128, pattern=r'.*\S.*', description="Stable key for this request")
 
 class UpdatePolicyRequest(BaseModel):
-    auto_allow_threshold: Optional[int] = Field(None, gt=0, description="Auto-allow threshold in USD cents")
-    hard_ceiling_threshold: Optional[int] = Field(None, gt=0, description="Hard ceiling threshold in USD cents")
+    auto_allow_threshold: Optional[int] = Field(None, gt=0, description="Auto-allow threshold in poisha")
+    hard_ceiling_threshold: Optional[int] = Field(None, gt=0, description="Hard ceiling threshold in poisha")
     allowed_tools: Optional[List[str]] = Field(None, description="List of allowed tool names")
 
 class DecideApprovalRequest(BaseModel):
@@ -57,7 +57,7 @@ def create_task_scope_endpoint(req: CreateScopeRequest):
             if order is None:
                 raise HTTPException(404, detail={"code": "ORDER_NOT_FOUND", "message": "This order was not found. Check the order ID in Order balances."})
             if order["currency"] != req.allowed_currency:
-                raise HTTPException(422, detail={"code": "CURRENCY_MISMATCH", "message": f"This order uses {order['currency']}. Switch to that currency before running the ticket."})
+                raise HTTPException(422, detail={"code": "CURRENCY_MISMATCH", "message": f"This order uses {order['currency']}. Only BDT orders can be refunded."})
             if order["original_destination"] != req.allowed_destination:
                 raise HTTPException(422, detail={"code": "DESTINATION_MISMATCH", "message": "Payment destination does not match this order. Check the account in Order balances."})
         scope_id = f"scope_{uuid.uuid4().hex[:10]}"

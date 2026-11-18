@@ -110,7 +110,7 @@ def test_size_guard_chunked_or_streaming_transfer():
     chunk = b"A" * 65536  # 64KB
     def large_generator():
         # Valid JSON with 2MB of padding inside reason field
-        yield b'{"tool": "refund_order", "idempotency_key": "chunk-bypass-1", "arguments": {"order_id": "ORD-101", "amount": 100, "currency": "USD", "destination": "card_visa_4242", "reason": "'
+        yield b'{"tool": "refund_order", "idempotency_key": "chunk-bypass-1", "arguments": {"order_id": "ORD-101", "amount": 100, "currency": "BDT", "destination": "card_visa_4242", "reason": "'
         for _ in range(32):  # 32 * 64KB = 2MB
             yield chunk
         yield b'"}}'
@@ -252,13 +252,13 @@ def test_backend_concurrent_approval_double_execution_race_condition():
             conn.execute(
                 "INSERT INTO orders (id, customer_name, currency, paid_amount, refundable_amount, original_destination, status) "
                 "VALUES (?, ?, ?, ?, ?, ?, 'paid')",
-                ("ORD-RACE-1", "Client Race", "USD", 50000, 50000, "card_visa_4242")
+                ("ORD-RACE-1", "Client Race", "BDT", 50000, 50000, "card_visa_4242")
             )
             # Setup task scope
             scope_id = "scope-race-1"
             save_task_scope(
                 conn, scope_id, "demo_operator", "ORD-RACE-1", "refund_order",
-                50000, "USD", "card_visa_4242",
+                50000, "BDT", "card_visa_4242",
                 (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()
             )
             # Create a pending action for $200 refund
@@ -266,7 +266,7 @@ def test_backend_concurrent_approval_double_execution_race_condition():
             args = {
                 "order_id": "ORD-RACE-1",
                 "amount": 20000,
-                "currency": "USD",
+                "currency": "BDT",
                 "destination": "card_visa_4242",
                 "reason": "Adversarial race test",
                 "idempotency_key": "idemp-race-1"

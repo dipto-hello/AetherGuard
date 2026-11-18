@@ -28,7 +28,7 @@ def clean_db():
     # Create scope bound to operator_alice
     save_task_scope(
         conn, "scope-alice-deep", "operator_alice", "ORD-101", "refund_order",
-        5000, "USD", "card_visa_4242", expiry
+        500000, "BDT", "card_visa_4242", expiry
     )
     yield conn
     conn.close()
@@ -66,7 +66,7 @@ async def test_authenticated_bob_spoofing_matrix_blocked(clean_db, spoofed_calle
     raw_text = res.content[0].text
     assert "Rahim Chowdhury" not in raw_text
     assert "card_visa_4242" not in raw_text
-    assert "25000" not in raw_text
+    assert "2500000" not in raw_text
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("anon_caller_id", [
@@ -136,6 +136,6 @@ async def test_authorized_caller_alice_succeeds_with_minimization(clean_db):
     assert body["order_id"] == "ORD-101"
     assert body["status"] == "paid"
     assert body["masked_destination"] == "card...4242"
-    assert body["refundable_amount"] == 25000
+    assert body["refundable_amount"] == 2500000
     assert "customer_name" not in body
     assert "original_destination" not in body

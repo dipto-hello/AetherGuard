@@ -1,6 +1,6 @@
 """Deterministic Policy Evaluation Engine"""
 from typing import Dict, Any, Optional, Tuple
-from .models import PolicyConfig, PolicyVerdict, TaskScope
+from .models import SUPPORTED_CURRENCY, PolicyConfig, PolicyVerdict, TaskScope
 
 def evaluate_policy(
     tool: str,
@@ -8,8 +8,6 @@ def evaluate_policy(
     order: Optional[Dict[str, Any]],
     task_scope: Optional[TaskScope],
     policy_config: Optional[PolicyConfig],
-    *,
-    bdt_rate_micros: Optional[int] = None,
 ) -> Tuple[PolicyVerdict, str]:
     """
     Deterministically evaluates an agent tool proposal.
@@ -49,6 +47,10 @@ def evaluate_policy(
 
         if amount <= 0:
             return PolicyVerdict.BLOCKED, "VALIDATION_ERROR: Amount must be greater than zero"
+
+        # Invariant: Taka only. Amounts and thresholds are poisha; there is no conversion.
+        if currency != SUPPORTED_CURRENCY:
+            return PolicyVerdict.BLOCKED, f"UNSUPPORTED_CURRENCY: Only {SUPPORTED_CURRENCY} refunds are supported"
 
         # Invariant: Trusted Task Scope Enforcement
         if policy_config.enforce_task_scope:
@@ -104,12 +106,6 @@ def evaluate_policy(
         # Threshold checks
         auto_limit = policy_config.auto_allow_threshold
         hard_limit = policy_config.hard_ceiling_threshold
-        if currency == "BDT":
-            if not bdt_rate_micros or bdt_rate_micros < 0:
-                return PolicyVerdict.BLOCKED, "FAIL_CLOSED: BDT policy rate unavailable"
-            # Round down to the last poisha that is within the USD limit.
-            auto_limit = auto_limit * bdt_rate_micros // 1_000_000
-            hard_limit = hard_limit * bdt_rate_micros // 1_000_000
         if amount > hard_limit:
             return PolicyVerdict.BLOCKED, (
                 f"POLICY_HARD_CEILING: Amount {amount} exceeds maximum allowed hard ceiling "

@@ -99,7 +99,7 @@ async def test_probe_active_scopes_exist_missing_scope_id_fails_closed(clean_db)
     expiry = (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()
     save_task_scope(
         clean_db, "scope-active", "op", "ORD-101", "refund_order",
-        5000, "USD", "card_visa_4242", expiry
+        5000, "BDT", "card_visa_4242", expiry
     )
     server = create_governed_mcp_server(clean_db, authenticated_caller="op")
     res = await server.call_tool("lookup_order", {"order_id": "ORD-101"})
@@ -129,7 +129,7 @@ async def test_probe_expired_task_scope_fails_closed(clean_db):
     past_expiry = (datetime.now(timezone.utc) - timedelta(minutes=10)).isoformat()
     save_task_scope(
         clean_db, "scope-past", "op", "ORD-101", "refund_order",
-        5000, "USD", "card_visa_4242", past_expiry
+        5000, "BDT", "card_visa_4242", past_expiry
     )
     server = create_governed_mcp_server(clean_db, authenticated_caller="op")
     res = await server.call_tool("lookup_order", {"order_id": "ORD-101", "scope_id": "scope-past"})
@@ -143,7 +143,7 @@ async def test_probe_cross_order_scope_tampering_fails_closed(clean_db):
     expiry = (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()
     save_task_scope(
         clean_db, "scope-101", "op", "ORD-101", "refund_order",
-        5000, "USD", "card_visa_4242", expiry
+        5000, "BDT", "card_visa_4242", expiry
     )
     server = create_governed_mcp_server(clean_db, authenticated_caller="op")
     res = await server.call_tool("lookup_order", {"order_id": "ORD-104", "scope_id": "scope-101"})
@@ -156,7 +156,7 @@ async def test_probe_corrupt_expires_at_fails_closed(clean_db):
     """Malformed expires_at timestamp in database must not leak order data."""
     clean_db.execute(
         "INSERT INTO task_scopes (scope_id, operator_id, order_id, allowed_action, max_amount, allowed_currency, allowed_destination, expires_at) "
-        "VALUES ('scope-bad-ts', 'op', 'ORD-101', 'refund_order', 5000, 'USD', 'card_visa_4242', 'NOT_AN_ISO_DATE')"
+        "VALUES ('scope-bad-ts', 'op', 'ORD-101', 'refund_order', 5000, 'BDT', 'card_visa_4242', 'NOT_AN_ISO_DATE')"
     )
     server = create_governed_mcp_server(clean_db, authenticated_caller="op")
     # Pydantic validation failure inside TaskScope must be caught and fail closed
@@ -246,7 +246,7 @@ async def test_probe_audit_write_failure_fails_closed_zero_leakage(clean_db):
     expiry = (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()
     save_task_scope(
         clean_db, "scope-audit-fail", "op", "ORD-101", "refund_order",
-        5000, "USD", "card_visa_4242", expiry
+        5000, "BDT", "card_visa_4242", expiry
     )
     clean_db.execute("""
         CREATE TRIGGER abort_audit_insert BEFORE INSERT ON audit_events
@@ -275,7 +275,7 @@ async def test_probe_audit_table_dropped_fails_closed(clean_db):
     expiry = (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()
     save_task_scope(
         clean_db, "scope-drop-audit", "op", "ORD-101", "refund_order",
-        5000, "USD", "card_visa_4242", expiry
+        5000, "BDT", "card_visa_4242", expiry
     )
     clean_db.execute("DROP TABLE audit_events")
     server = create_governed_mcp_server(clean_db, authenticated_caller="op")
@@ -298,7 +298,7 @@ async def test_probe_honest_caller_mismatch_blocked(clean_db):
     expiry = (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()
     save_task_scope(
         clean_db, "scope-alice", "operator_alice", "ORD-101", "refund_order",
-        5000, "USD", "card_visa_4242", expiry
+        5000, "BDT", "card_visa_4242", expiry
     )
     server = create_governed_mcp_server(clean_db, authenticated_caller="op")
     res = await server.call_tool("lookup_order", {
@@ -319,7 +319,7 @@ async def test_probe_authenticated_session_caller_mismatch_blocked(clean_db):
     expiry = (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()
     save_task_scope(
         clean_db, "scope-alice-2", "operator_alice", "ORD-101", "refund_order",
-        5000, "USD", "card_visa_4242", expiry
+        5000, "BDT", "card_visa_4242", expiry
     )
     server_bob = create_governed_mcp_server(clean_db, authenticated_caller="operator_bob")
     res = await server_bob.call_tool("lookup_order", {
@@ -346,7 +346,7 @@ async def test_probe_adversarial_caller_identity_spoofing_hole(clean_db):
     expiry = (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()
     save_task_scope(
         clean_db, "scope-alice-spoof", "operator_alice", "ORD-101", "refund_order",
-        5000, "USD", "card_visa_4242", expiry
+        5000, "BDT", "card_visa_4242", expiry
     )
     # Server transport identity is authenticated as Bob
     server_bob = create_governed_mcp_server(clean_db, authenticated_caller="operator_bob")
@@ -382,7 +382,7 @@ async def test_probe_adversarial_anonymous_omission_bypass_hole(clean_db):
     expiry = (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()
     save_task_scope(
         clean_db, "scope-alice-anon", "operator_alice", "ORD-101", "refund_order",
-        5000, "USD", "card_visa_4242", expiry
+        5000, "BDT", "card_visa_4242", expiry
     )
     # Standard server instance without authenticated_caller
     server_anon = create_governed_mcp_server(clean_db)

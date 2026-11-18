@@ -85,7 +85,7 @@
     <!-- refund proposal -->
     <rect x="815" y="148" width="110" height="64" rx="12" fill="#101822" stroke="#334155"/>
     <text x="870" y="174" text-anchor="middle" fill="#F8FAFC" font-size="14" font-weight="700">Proposal</text>
-    <text x="870" y="196" text-anchor="middle" fill="#aebdca" font-size="12">refund · $42</text>
+    <text x="870" y="196" text-anchor="middle" fill="#aebdca" font-size="12">refund · ৳4,200</text>
 
     <!-- policy shield -->
     <path d="M985 124L1030 142V182C1030 210 1010 228 985 240C960 228 940 210 940 182V142Z" fill="url(#shield)" stroke="#34d399" stroke-width="2.5">
