@@ -2,19 +2,14 @@ services:
   - type: web
     name: aetherguard
     runtime: docker
-    plan: starter # persistent disks need a paid plan; on free the SQLite DB resets on every deploy
+    plan: free
     dockerfilePath: ./Dockerfile
-    # The disk is only mounted at runtime, so init the DB here (idempotent; keeps existing data).
     dockerCommand: >-
       sh -c "python -c 'from app.sandbox.db import init_db; init_db().close()'
       && exec uvicorn app.main:app --host 0.0.0.0 --port $PORT"
     healthCheckPath: /api/health
     envVars:
       - key: AETHERGUARD_OPERATOR_TOKEN
-        generateValue: true
+        value: admin
       - key: GEMINI_API_KEY
         sync: false
-    disk:
-      name: aetherguard-data
-      mountPath: /data
-      sizeGB: 1
