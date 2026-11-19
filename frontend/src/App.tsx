@@ -180,7 +180,7 @@ export function App() {
               Password
             </label>
             <p className="text-xs text-slate-400 leading-relaxed">
-              Enter the operator password.
+              Enter the operator password. Admin password: <span className="font-mono text-slate-200">admin</span>
             </p>
             <input
               id="operator-token"
