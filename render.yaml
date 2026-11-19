@@ -4,9 +4,7 @@ services:
     runtime: docker
     plan: free
     dockerfilePath: ./Dockerfile
-    dockerCommand: >-
-      sh -c "python -c 'from app.sandbox.db import init_db; init_db().close()'
-      && exec uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    dockerCommand: /app/entrypoint.sh
     healthCheckPath: /api/health
     envVars:
       - key: AETHERGUARD_OPERATOR_TOKEN

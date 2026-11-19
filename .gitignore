@@ -85,3 +85,5 @@ Thumbs.db
 *.sqlite3-journal
 *.tsbuildinfo
 .ruff_cache/
+
+.vercel/

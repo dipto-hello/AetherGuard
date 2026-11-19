@@ -29,6 +29,10 @@ COPY backend/pytest.ini ./
 # Copy built frontend assets from stage 1
 COPY --from=frontend-builder /build/frontend/dist /frontend/dist
 
+# Copy entrypoint script
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
 RUN useradd --system --uid 10001 --create-home aetherguard \
     && mkdir -p /data \
     && chown aetherguard:aetherguard /data
@@ -37,5 +41,5 @@ USER aetherguard
 # Expose HTTP port
 EXPOSE 8000
 
-# Run FastAPI backend via Uvicorn
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run FastAPI backend via entrypoint script
+CMD ["/app/entrypoint.sh"]
