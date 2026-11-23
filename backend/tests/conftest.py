@@ -7,6 +7,7 @@ from pathlib import Path
 _test_data = tempfile.TemporaryDirectory(prefix="aetherguard-tests-")
 os.environ["AETHERGUARD_DB_PATH"] = str(Path(_test_data.name) / "sandbox.db")
 os.environ["AETHERGUARD_OPERATOR_TOKEN"] = "test-only-operator-token"
+os.environ["AETHERGUARD_USER_TOKEN"] = "test-only-user-token"
 os.environ.pop("GEMINI_API_KEY", None)
 
 

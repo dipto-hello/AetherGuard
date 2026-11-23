@@ -107,3 +107,20 @@ test('synchronous in-flight guard prevents duplicate approval submissions', asyn
   assert.equal(inFlight.size, 0, 'inFlight set should be cleared after resolution');
 });
 
+
+test('fetchRole returns the signed-in role and rejects bad or forbidden tokens', async () => {
+  let url;
+  for (const role of ['admin', 'user']) {
+    globalThis.fetch = async (input) => {
+      url = String(input);
+      return new Response(JSON.stringify({ role }), { status: 200 });
+    };
+    assert.equal(await api.fetchRole(), role);
+    assert.equal(url, '/api/me');
+  }
+  globalThis.fetch = async () => new Response('', { status: 401 });
+  await assert.rejects(api.fetchRole(), /Access denied/);
+  // A user token on an admin route gets 403, which the client also treats as access denied.
+  globalThis.fetch = async () => new Response(JSON.stringify({ detail: 'Admin access required' }), { status: 403 });
+  await assert.rejects(api.fetchPendingApprovals(), /Access denied/);
+});
