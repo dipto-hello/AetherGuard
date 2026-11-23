@@ -4,12 +4,14 @@ import type { AgentTrace, Order, PolicyConfig } from '../types';
 import { refundExamples } from '../refundExamples';
 import { formatMinor } from '../policyMoney';
 import { processAgentTicket, createTaskScope, lookupAction } from '../api';
+import type { MyRequest } from '../myRequests';
 
 interface AgentArenaProps {
   onActionComplete: () => void;
   unknownAttempt: string | null;
   setUnknownAttempt: (key: string | null) => void;
   onNavigateTab?: (tab: string) => void;
+  onRequestRecorded?: (request: MyRequest) => void;
   orders: Order[];
   policy: PolicyConfig | null;
 }
@@ -19,6 +21,7 @@ export const AgentArena: React.FC<AgentArenaProps> = ({
   unknownAttempt,
   setUnknownAttempt,
   onNavigateTab,
+  onRequestRecorded,
   orders, policy
 }) => {
   const scenarios = refundExamples(orders, policy);
@@ -99,6 +102,14 @@ export const AgentArena: React.FC<AgentArenaProps> = ({
       );
       setUnknownAttempt(null);
       setResult(resultTrace);
+      if (resultTrace.pending_approval || resultTrace.executed) {
+        onRequestRecorded?.({
+          key: submittedKey,
+          orderId: resultTrace.parsed_parameters?.order_id || 'Unknown order',
+          amount: resultTrace.parsed_parameters?.amount ?? 0,
+          status: resultTrace.executed ? 'executed' : 'pending',
+        });
+      }
       onActionComplete();
     } catch (err) {
       const detail = err instanceof Error ? err.message : '';
@@ -148,7 +159,7 @@ export const AgentArena: React.FC<AgentArenaProps> = ({
   else if (trace?.executed) explanation = 'The order balance was reduced.';
   else if (judgeInvalid) explanation = 'The AI judge found this claim invalid: ' + judgeReason + '. No refund was made.';
   else if (judgeUnsure) explanation = 'The AI judge was unsure: ' + judgeReason + '. Approve or reject this refund in Approvals. The balance has not changed.';
-  else if (trace?.pending_approval) explanation = 'Review the customer message and the proposed refund before approving. The balance has not changed.';
+  else if (trace?.pending_approval) explanation = 'Waiting for admin approval. The balance has not changed.';
   else if (reason.includes('REFUND_INTENT_UNCLEAR')) explanation = 'No refund was made. Check the customer’s request and confirm the order, refund amount, and payment destination before trying again.';
   else if (reason.includes('REFUND_AMOUNT_MISMATCH')) explanation = 'The model proposed a different amount from the example. No refund was made.';
   else if (trace?.agent_mode === 'model_not_configured') explanation = 'No AI model is configured. Set the server’s Gemini API key and restart the app.';

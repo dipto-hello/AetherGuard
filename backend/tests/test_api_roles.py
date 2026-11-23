@@ -78,6 +78,8 @@ def test_user_large_refund_needs_admin_approval():
         "scope_id": _user_scope(), "idempotency_key": "role-large",
     }).json()["trace"]
     assert trace["boundary_verdict"] == "APPROVAL_REQUIRED" and not trace["executed"]
+    status = lambda: user.get("/api/governance/actions/lookup", params={"idempotency_key": "role-large"}).json()["action"]["status"]
+    assert status() == "pending"
 
     assert user.get("/api/governance/pending-approvals").status_code == 403
     pending = admin.get("/api/governance/pending-approvals").json()["pending_actions"]
@@ -90,3 +92,16 @@ def test_user_large_refund_needs_admin_approval():
 
     assert admin.post(f"/api/governance/approvals/{action_id}/decide", json=decision).status_code == 200
     assert admin.get("/api/sandbox/orders/ORD-101").json()["order"]["refundable_amount"] == 0
+    assert status() == "executed"  # what the user panel shows as Accepted
+
+
+def test_user_sees_rejected_refund():
+    user.post("/api/agent/process-ticket", json={
+        "ticket_text": "Refund ৳25,000 for ORD-101 to card_visa_4242",
+        "scope_id": _user_scope(), "idempotency_key": "role-reject",
+    })
+    action_id = admin.get("/api/governance/pending-approvals").json()["pending_actions"][0]["action_id"]
+    assert admin.post(f"/api/governance/approvals/{action_id}/decide",
+                      json={"decision": "reject", "reviewer_id": "demo_operator"}).status_code == 200
+    lookup = user.get("/api/governance/actions/lookup", params={"idempotency_key": "role-reject"}).json()["action"]
+    assert lookup["status"] == "rejected"

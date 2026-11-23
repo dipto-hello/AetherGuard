@@ -24,6 +24,8 @@ import { PolicyManager } from './components/PolicyManager';
 import { AuditLedger } from './components/AuditLedger';
 import { SandboxViewer } from './components/SandboxViewer';
 import { EvaluationMatrix } from './components/EvaluationMatrix';
+import { MyRequests } from './components/MyRequests';
+import { loadMyRequests, saveMyRequests, type MyRequest } from './myRequests';
 import { AlertCircle, RefreshCw, KeyRound, ShieldCheck } from 'lucide-react';
 
 export function App() {
@@ -53,6 +55,15 @@ export function App() {
     } catch { /* Storage may be unavailable */ }
     setUnknownAttemptState(key);
   };
+
+  const [myRequests, setMyRequestsState] = useState<MyRequest[]>(loadMyRequests);
+  const setMyRequests = useCallback((update: (current: MyRequest[]) => MyRequest[]) => {
+    setMyRequestsState((current) => {
+      const next = update(current);
+      saveMyRequests(next);
+      return next;
+    });
+  }, []);
 
   const latestLoad = useRef(0);
   const polling = useRef(false);
@@ -272,8 +283,10 @@ export function App() {
                 setUnknownAttempt={setUnknownAttempt}
                 orders={orders}
                 policy={policy}
+                onRequestRecorded={(request) => setMyRequests((current) => [request, ...current])}
               />
             )}
+            {!isAdmin && <MyRequests requests={myRequests} setRequests={setMyRequests} />}
 
             {isAdmin && activeTab === 'approvals' && (
               <ApprovalDesk
