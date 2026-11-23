@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { ShieldCheck, RotateCcw, Activity, KeyRound, FlaskConical, ClipboardCheck, ChartNoAxesColumn, Sliders, Wallet } from 'lucide-react';
+import { ShieldCheck, RotateCcw, Activity, KeyRound, ClipboardCheck, ChartNoAxesColumn, Sliders, Wallet } from 'lucide-react';
 import type { PolicyConfig } from '../types';
 import { formatPolicyLimit } from '../policyMoney';
 
@@ -26,7 +26,6 @@ export const Header: React.FC<HeaderProps> = ({
   isAdmin,
 }) => {
   const tabs = [
-    { id: 'arena', label: 'Test a refund', icon: FlaskConical, badge: null },
     { id: 'approvals', label: 'Approvals', icon: ClipboardCheck, badge: pendingCount > 0 ? pendingCount : null },
     { id: 'eval', label: 'Test results', icon: ChartNoAxesColumn, badge: null },
     { id: 'policy', label: 'Refund rules', icon: Sliders, badge: null },

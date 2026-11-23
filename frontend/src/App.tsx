@@ -27,7 +27,7 @@ import { EvaluationMatrix } from './components/EvaluationMatrix';
 import { AlertCircle, RefreshCw, KeyRound, ShieldCheck } from 'lucide-react';
 
 export function App() {
-  const [activeTab, setActiveTab] = useState<string>('arena');
+  const [activeTab, setActiveTab] = useState<string>('approvals');
   const [orders, setOrders] = useState<Order[]>([]);
   const [refunds, setRefunds] = useState<Refund[]>([]);
   const [policy, setPolicy] = useState<PolicyConfig | null>(null);
@@ -141,7 +141,7 @@ export function App() {
   const handleDisconnect = () => {
     setOperatorToken('');
     setRole(null);
-    setActiveTab('arena');
+    setActiveTab('approvals');
   };
 
   // Login view when not authenticated
@@ -264,17 +264,16 @@ export function App() {
           </div>
         ) : (
           <>
-            <div hidden={activeTab !== 'arena'}>
+            {!isAdmin && (
               <AgentArena
                 key={sandboxVersion}
                 onActionComplete={loadAllData}
                 unknownAttempt={unknownAttempt}
                 setUnknownAttempt={setUnknownAttempt}
-                onNavigateTab={isAdmin ? (tab) => setActiveTab(tab) : undefined}
                 orders={orders}
                 policy={policy}
               />
-            </div>
+            )}
 
             {isAdmin && activeTab === 'approvals' && (
               <ApprovalDesk
