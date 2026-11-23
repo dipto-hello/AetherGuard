@@ -13,7 +13,8 @@ import {
   fetchPendingApprovals,
   fetchAuditLogs,
   resetSandbox,
-  setOperatorToken
+  setOperatorToken,
+  fetchRole
 } from './api';
 
 import { Header } from './components/Header';
@@ -38,7 +39,8 @@ export function App() {
   const [isResetting, setIsResetting] = useState<boolean>(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [tokenInput, setTokenInput] = useState('');
-  const [authenticated, setAuthenticated] = useState(false);
+  const [role, setRole] = useState<'admin' | 'user' | null>(null);
+  const isAdmin = role === 'admin';
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectError, setConnectError] = useState<string | null>(null);
   const [unknownAttempt, setUnknownAttemptState] = useState<string | null>(() => {
@@ -63,16 +65,17 @@ export function App() {
     const load = ++latestLoad.current;
     polling.current = true;
     try {
+      // Users may only call the refund-testing routes; admin-only data stays empty for them.
       const results = await Promise.allSettled([
         fetchOrders(),
-        fetchRefunds(),
         fetchPolicy(),
-        fetchPendingApprovals(),
-        fetchAuditLogs(),
+        isAdmin ? fetchRefunds() : Promise.resolve([] as Refund[]),
+        isAdmin ? fetchPendingApprovals() : Promise.resolve([] as PendingAction[]),
+        isAdmin ? fetchAuditLogs() : Promise.resolve([] as AuditEvent[]),
       ]);
 
       if (load !== latestLoad.current) return;
-      const [ordRes, refRes, polRes, pendingRes, logRes] = results;
+      const [ordRes, polRes, refRes, pendingRes, logRes] = results;
 
       if (ordRes.status === 'fulfilled') setOrders(ordRes.value);
       if (refRes.status === 'fulfilled') setRefunds(refRes.value);
@@ -84,7 +87,7 @@ export function App() {
       if (failures.length > 0) {
         if (failures.some(f => f.reason?.message?.includes('Access denied'))) {
           setOperatorToken('');
-          setAuthenticated(false);
+          setRole(null);
           return;
         }
         setGlobalError(failures.length === results.length
@@ -104,7 +107,7 @@ export function App() {
   };
 
   useEffect(() => {
-    if (!authenticated) return;
+    if (!role) return;
     let active = true;
     const fetchTelemetry = () => {
       if (active && !polling.current) loadAllData();
@@ -117,7 +120,9 @@ export function App() {
       clearTimeout(timer);
       clearInterval(interval);
     };
-  }, [authenticated, invalidateDashboard]);
+    // loadAllData only reads role, which is already a dependency.
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
+  }, [role, invalidateDashboard]);
 
   const handleReset = async () => {
     if (!window.confirm('Restore synthetic order balances, clear refund history, and expire pending approvals and scopes?')) return;
@@ -135,11 +140,12 @@ export function App() {
 
   const handleDisconnect = () => {
     setOperatorToken('');
-    setAuthenticated(false);
+    setRole(null);
+    setActiveTab('arena');
   };
 
   // Login view when not authenticated
-  if (!authenticated) {
+  if (!role) {
     return (
       <main className="workspace-shell min-h-screen bg-background text-slate-100 flex items-center justify-center p-6">
         <form
@@ -150,10 +156,10 @@ export function App() {
             setConnectError(null);
             setOperatorToken(tokenInput);
             try {
-              await fetchPolicy();
+              const signedInRole = await fetchRole();
               setTokenInput('');
               setIsLoading(true);
-              setAuthenticated(true);
+              setRole(signedInRole);
             } catch (err) {
               setOperatorToken('');
               const message = err instanceof Error ? err.message : '';
@@ -180,7 +186,7 @@ export function App() {
               Password
             </label>
             <p className="text-xs text-slate-400 leading-relaxed">
-              Enter the operator password. Admin password: <span className="font-mono text-slate-200">admin</span>
+              Admin password: <span className="font-mono text-slate-200">admin</span> · User password: <span className="font-mono text-slate-200">user</span>
             </p>
             <input
               id="operator-token"
@@ -231,6 +237,7 @@ export function App() {
         onReset={handleReset}
         isResetting={isResetting}
         onChangeToken={handleDisconnect}
+        isAdmin={isAdmin}
       />
 
       <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 outline-none">
@@ -263,13 +270,13 @@ export function App() {
                 onActionComplete={loadAllData}
                 unknownAttempt={unknownAttempt}
                 setUnknownAttempt={setUnknownAttempt}
-                onNavigateTab={(tab) => setActiveTab(tab)}
+                onNavigateTab={isAdmin ? (tab) => setActiveTab(tab) : undefined}
                 orders={orders}
                 policy={policy}
               />
             </div>
 
-            {activeTab === 'approvals' && (
+            {isAdmin && activeTab === 'approvals' && (
               <ApprovalDesk
                 pendingActions={pendingActions}
                 onActionDecided={loadAllData}
@@ -277,22 +284,22 @@ export function App() {
               />
             )}
 
-            {activeTab === 'eval' && (
+            {isAdmin && activeTab === 'eval' && (
               <EvaluationMatrix />
             )}
 
-            {activeTab === 'policy' && policy && (
+            {isAdmin && activeTab === 'policy' && policy && (
               <PolicyManager
                 policy={policy}
                 onPolicyUpdated={(p) => { setPolicy(p); void loadAllData(); }}
               />
             )}
 
-            {activeTab === 'audit' && (
+            {isAdmin && activeTab === 'audit' && (
               <AuditLedger logs={logs} />
             )}
 
-            {activeTab === 'sandbox' && (
+            {isAdmin && activeTab === 'sandbox' && (
               <SandboxViewer
                 orders={orders}
                 refunds={refunds}

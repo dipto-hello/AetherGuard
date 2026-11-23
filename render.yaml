@@ -9,5 +9,7 @@ services:
     envVars:
       - key: AETHERGUARD_OPERATOR_TOKEN
         value: admin
+      - key: AETHERGUARD_USER_TOKEN
+        value: user
       - key: GEMINI_API_KEY
         sync: false
