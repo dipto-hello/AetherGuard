@@ -30,7 +30,8 @@ Open `http://localhost:5173` and enter the operator token. Vite proxies `/api` t
 
 | Setting | Behavior |
 | --- | --- |
-| `AETHERGUARD_OPERATOR_TOKEN` | Required for protected HTTP routes. Requests fail closed if unset. |
+| `AETHERGUARD_OPERATOR_TOKEN` | Admin password. Required for protected HTTP routes. Requests fail closed if unset. |
+| `AETHERGUARD_USER_TOKEN` | Optional user-panel password. It can only test refunds: list orders, read rules, create a task scope, process a ticket, and look up an action. Every other route returns 403. |
 | `GEMINI_API_KEY` | Enables live ticket proposals. Missing credentials or failed proposals produce no refund. |
 | `AETHERGUARD_DB_PATH` | Optional SQLite path. Defaults to `backend/data/sandbox.db`. An absolute path outside the clone is suitable for persistent local state. |
 | `AETHERGUARD_RATE_LIMIT_PER_MINUTE` | Ticket-processing request limit. Default 20 per process per client key. |

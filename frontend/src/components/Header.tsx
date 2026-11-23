@@ -12,6 +12,7 @@ interface HeaderProps {
   onReset: () => void;
   isResetting: boolean;
   onChangeToken?: () => void;
+  isAdmin: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -22,6 +23,7 @@ export const Header: React.FC<HeaderProps> = ({
   onReset,
   isResetting,
   onChangeToken,
+  isAdmin,
 }) => {
   const tabs = [
     { id: 'arena', label: 'Test a refund', icon: FlaskConical, badge: null },
@@ -49,7 +51,7 @@ export const Header: React.FC<HeaderProps> = ({
                 <span className="font-bold text-base text-white tracking-tight">AetherGuard</span>
               </div>
               <p className="text-xs text-slate-400">
-                Refund review
+                {isAdmin ? 'Admin panel' : 'User panel'}
               </p>
             </div>
           </div>
@@ -78,7 +80,7 @@ export const Header: React.FC<HeaderProps> = ({
               BDT (৳)
             </span>
 
-            <button
+            {isAdmin && <button
               onClick={onReset}
               disabled={isResetting}
               title="Reset synthetic orders and refund history"
@@ -87,7 +89,7 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <RotateCcw className={`w-3.5 h-3.5 text-brandCyan ${isResetting ? 'animate-spin' : ''}`} />
               <span className="hidden sm:inline">{isResetting ? 'Resetting...' : 'Reset Data'}</span>
-            </button>
+            </button>}
 
             {onChangeToken && (
               <button
@@ -103,8 +105,8 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        {/* Navigation Tabs */}
-        <nav aria-label="Workspace sections" className="workspace-nav flex flex-wrap border-t border-borderSubtle/60">
+        {/* Navigation Tabs: the user panel has only one page */}
+        {isAdmin && <nav aria-label="Workspace sections" className="workspace-nav flex flex-wrap border-t border-borderSubtle/60">
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id;
             return (
@@ -136,7 +138,7 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
             );
           })}
-        </nav>
+        </nav>}
       </div>
     </header>
   );

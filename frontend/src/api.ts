@@ -53,6 +53,12 @@ async function apiFetch(input: RequestInfo | URL, init: RequestInit = {}): Promi
   return response;
 }
 
+export async function fetchRole(): Promise<'admin' | 'user'> {
+  const res = await apiFetch(`/api/me`);
+  if (!res.ok) throw new Error(await extractErrorMessage(res, 'Failed to check sign-in'));
+  return (await res.json()).role;
+}
+
 export async function fetchOrders(): Promise<Order[]> {
   const res = await apiFetch(`/api/sandbox/orders`);
   if (!res.ok) throw new Error(await extractErrorMessage(res, 'Failed to fetch sandbox orders'));

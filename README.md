@@ -94,7 +94,8 @@ Open `http://localhost:5173` and enter the local operator token. API documentati
 
 | Variable | Purpose |
 | --- | --- |
-| `AETHERGUARD_OPERATOR_TOKEN` | Required for protected HTTP routes. |
+| `AETHERGUARD_OPERATOR_TOKEN` | Admin password. Required for protected HTTP routes. |
+| `AETHERGUARD_USER_TOKEN` | Optional user-panel password. It can only test refunds: list orders, read rules, create a task scope, process a ticket, and look up an action. Every other route returns 403. |
 | `GEMINI_API_KEY` | Required for the AI claim judge and live ticket proposals. The rule tests and order controls work without it. |
 | `AETHERGUARD_DB_PATH` | Optional SQLite path. Defaults to `backend/data/sandbox.db`. |
 | `AETHERGUARD_AUTHENTICATED_OPERATOR` | Trusted caller identity supplied by the launcher for a stdio MCP session. |
