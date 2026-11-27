@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { CircleCheck, CircleX, Clock3 } from 'lucide-react';
+import { CircleCheck, CircleX, Clock3, MessageSquareText, ReceiptText, ImagePlus, ShieldCheck, Send } from 'lucide-react';
 import type { AgentTrace, Order, PolicyConfig } from '../types';
 import { refundExamples } from '../refundExamples';
 import { formatMinor } from '../policyMoney';
@@ -179,23 +179,23 @@ export const AgentArena: React.FC<AgentArenaProps> = ({
   const needsReview = trace?.pending_approval || reason.includes('REFUND_INTENT_UNCLEAR');
   const accepted = trace?.boundary_verdict === 'ALLOWED';
   const StatusIcon = accepted ? CircleCheck : needsReview ? Clock3 : CircleX;
-  const statusColor = accepted ? 'border-emerald-600/50 bg-emerald-950/40 text-emerald-300'
-    : needsReview ? 'border-amber-600/50 bg-amber-950/40 text-amber-200'
-    : 'border-red-600/50 bg-red-950/40 text-red-300';
+  const statusColor = accepted ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+    : needsReview ? 'border-amber-200 bg-amber-50 text-amber-900'
+    : 'border-red-200 bg-red-50 text-red-800';
 
   return (
     <div className="mx-auto max-w-5xl">
       <header className="mb-7">
-        <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">Test a refund</h1>
-        <p className="mt-2 text-sm text-slate-300">Gemini reads the ticket. Refunds within the auto-approve limit pay out automatically; larger ones require your approval.</p>
+        <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">Request a refund</h1>
+        <p className="mt-2 max-w-2xl text-base leading-relaxed text-slate-600">Gemini reads the ticket. Refunds within the auto-approve limit pay out automatically; larger ones require your approval.</p>
       </header>
       <div className="grid gap-5 lg:grid-cols-2 lg:items-start">
-        <section className="min-w-0 rounded-xl border border-borderSubtle bg-surface p-4 sm:p-6" aria-labelledby="ticket-heading">
-          <h2 id="ticket-heading" className="mb-4 text-lg font-semibold text-white">Support ticket</h2>
-          <fieldset className="space-y-4 disabled:opacity-70" disabled={isLoading || !!unknownAttempt}>
-            <label className="block text-sm font-medium">
+        <section className="user-card min-w-0 p-5 sm:p-6" aria-labelledby="ticket-heading">
+          <h2 id="ticket-heading" className="mb-5 flex items-center gap-2 text-lg font-semibold text-slate-900"><MessageSquareText className="h-5 w-5 text-emerald-600" aria-hidden="true" />Support ticket</h2>
+          <fieldset className="space-y-5 disabled:opacity-70" disabled={isLoading || !!unknownAttempt}>
+            <label className="block text-sm font-semibold text-slate-800">
               Example ticket
-              <select className="mt-1 block w-full rounded-lg border border-borderStrong bg-background p-2.5 text-sm text-white"
+              <select className="user-field cursor-pointer"
                 value={activeScenario} onChange={(event) => {
                   if (event.target.value === activeScenario) return;
                   setActiveScenario(event.target.value);
@@ -210,99 +210,100 @@ export const AgentArena: React.FC<AgentArenaProps> = ({
                 <option value="">Custom ticket</option>
               </select>
             </label>
-            {selected && !selected.text && <p role="status" className="text-sm text-amber-200">{selected.unavailable}</p>}
-            {!selected && !scope.enabled && <p className="text-xs text-slate-400">Set refund permission below to authorize a custom request.</p>}
-            <label className="block text-sm font-medium">
+            {selected && !selected.text && <p role="status" className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-900">{selected.unavailable}</p>}
+            {!selected && !scope.enabled && <p className="text-sm text-slate-500">Set refund permission below to authorize a custom request.</p>}
+            <label className="block text-sm font-semibold text-slate-800">
               Customer message
               <textarea rows={5} maxLength={10000} value={ticketText}
                 onChange={(event) => { setScopeOverride(scope); setCustomText(event.target.value); setActiveScenario(''); setResult(null); setErrorMsg(null); }}
-                className="mt-1 block w-full resize-y rounded-lg border border-borderStrong bg-background p-3 text-sm leading-relaxed text-white" />
+                className="user-field resize-y leading-relaxed" />
             </label>
             <div className="text-sm">
-              <label className="block font-medium">
-                Evidence photo (optional)
+              <label className="block font-semibold text-slate-800">
+                <span className="flex items-center gap-1.5"><ImagePlus className="h-4 w-4 text-slate-500" aria-hidden="true" />Evidence photo <span className="font-normal text-slate-500">(optional)</span></span>
                 <input key={evidence ? 'set' : 'empty'} type="file" accept="image/jpeg,image/png,image/webp"
                   onChange={(event) => handlePhoto(event.target.files?.[0])}
-                  className="mt-1 block w-full text-sm text-slate-300 file:mr-3 file:rounded file:border-0 file:bg-borderStrong file:px-3 file:py-1.5 file:text-white" />
+                  className="mt-1.5 block w-full rounded-lg border border-dashed border-slate-300 bg-slate-50 p-2 text-sm text-slate-600 file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-emerald-600 file:px-3 file:py-1.5 file:font-semibold file:text-white hover:file:bg-emerald-700" />
               </label>
               {evidence && (
                 <div className="mt-2 flex items-center gap-3">
-                  <img src={evidence.preview} alt="Evidence photo preview" className="h-16 w-16 rounded object-cover" />
-                  <button type="button" className="text-brand-300 underline" onClick={() => setEvidence(null)}>Remove photo</button>
+                  <img src={evidence.preview} alt="Evidence photo preview" className="h-16 w-16 rounded-lg border border-slate-200 object-cover" />
+                  <button type="button" className="user-link text-sm" onClick={() => setEvidence(null)}>Remove photo</button>
                 </div>
               )}
-              <p className="mt-1 text-xs text-slate-400">The AI judge reviews the message and photo before any refund rule runs. Use synthetic photos only.</p>
+              <p className="mt-1.5 text-sm text-slate-500">The AI judge reviews the message and photo before any refund rule runs. Use synthetic photos only.</p>
             </div>
-            <div className="rounded-lg border border-borderSubtle bg-background p-3 text-sm">
-              <h3 className="font-semibold text-white">Refund permission</h3>
-              <p className="mt-1 break-words text-slate-300">{scope.enabled
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4 text-sm">
+              <h3 className="flex items-center gap-1.5 font-semibold text-slate-900"><ShieldCheck className="h-4 w-4 text-emerald-700" aria-hidden="true" />Refund permission</h3>
+              <p className="mt-1 break-words text-slate-700">{scope.enabled
                 ? scope.orderId + ' · Up to ' + formatMinor(BigInt(scope.amount)) + ' · ' + scope.destination
                 : 'No refund permission'}</p>
               <details className="mt-2">
-                <summary className="cursor-pointer text-brand-300">Change permission</summary>
-                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <summary className="user-link inline-block">Change permission</summary>
+                <div className="mt-3 grid gap-3 text-slate-800 sm:grid-cols-2">
                   <label className="flex items-center gap-2 sm:col-span-2">
-                    <input type="checkbox" checked={scope.enabled} onChange={(event) => setScopeOverride({ ...scope, enabled: event.target.checked })} />
+                    <input type="checkbox" className="h-4 w-4 accent-emerald-600" checked={scope.enabled} onChange={(event) => setScopeOverride({ ...scope, enabled: event.target.checked })} />
                     Give permission for this order
                   </label>
                   <label>Order
-                    <input disabled={!scope.enabled} className="mt-1 w-full rounded border border-borderStrong bg-surface p-2" value={scope.orderId}
+                    <input disabled={!scope.enabled} className="user-field" value={scope.orderId}
                       onChange={(event) => setScopeOverride({ ...scope, orderId: event.target.value.toUpperCase() })} />
                   </label>
                   <label>Maximum refund (BDT)
-                    <input disabled={!scope.enabled} type="number" min="0.01" step="0.01" className="mt-1 w-full rounded border border-borderStrong bg-surface p-2"
+                    <input disabled={!scope.enabled} type="number" min="0.01" step="0.01" className="user-field"
                       value={scope.amount ? scope.amount / 100 : ''} onChange={(event) => setScopeOverride({ ...scope, amount: Math.round(Number(event.target.value) * 100) })} />
                   </label>
                   <label>Payment destination
-                    <input disabled={!scope.enabled} className="mt-1 w-full rounded border border-borderStrong bg-surface p-2" value={scope.destination}
+                    <input disabled={!scope.enabled} className="user-field" value={scope.destination}
                       onChange={(event) => setScopeOverride({ ...scope, destination: event.target.value })} />
                   </label>
                 </div>
               </details>
             </div>
             <button type="button" onClick={handleRunAgent} disabled={!ticketText.trim() || (scope.enabled && (!scope.orderId.trim() || !scope.destination.trim() || !Number.isSafeInteger(scope.amount) || scope.amount <= 0))}
-              className="rounded-lg bg-brand-400 px-5 py-2.5 text-sm font-bold text-slate-950 hover:bg-brand-300 disabled:opacity-50">
+              className="user-cta w-full sm:w-auto">
+              <Send className="h-4 w-4" aria-hidden="true" />
               {isLoading ? 'Checking…' : 'Run ticket'}
             </button>
           </fieldset>
         </section>
-        <section className="min-w-0 rounded-xl border border-borderSubtle bg-surface p-4 sm:p-6" aria-labelledby="result-heading">
-          <h2 id="result-heading" className="mb-4 text-lg font-semibold text-white">Refund result</h2>
-          {errorMsg && <p role="alert" className="mb-3 break-words text-sm text-red-300">{errorMsg}</p>}
+        <section className="user-card min-w-0 p-5 sm:p-6 lg:sticky lg:top-24" aria-labelledby="result-heading">
+          <h2 id="result-heading" className="mb-5 flex items-center gap-2 text-lg font-semibold text-slate-900"><ReceiptText className="h-5 w-5 text-emerald-600" aria-hidden="true" />Refund result</h2>
+          {errorMsg && <p role="alert" className="mb-3 break-words rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{errorMsg}</p>}
           {unknownAttempt && !isLoading && (
-            <div className="space-y-3 text-sm text-amber-200">
+            <div className="space-y-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
               <p>We could not confirm what happened. Check the recorded result before starting another request.</p>
               {lookupMessage && <p role="status" className="break-words">{lookupMessage}</p>}
               <div className="flex flex-wrap gap-3">
-                <button className="underline" onClick={handleLookup} disabled={isChecking}>{isChecking ? 'Checking…' : 'Check result'}</button>
-                <button className="underline" onClick={() => {
+                <button className="user-link" onClick={handleLookup} disabled={isChecking}>{isChecking ? 'Checking…' : 'Check result'}</button>
+                <button className="user-link" onClick={() => {
                   if (!window.confirm('Start a new request? The previous request may still finish.')) return;
                   setUnknownAttempt(null); setErrorMsg(null); setLookupMessage(null);
                 }}>Start a new request</button>
               </div>
             </div>
           )}
-          {isLoading && <p role="status" className="text-sm text-slate-300">Checking the ticket and order…</p>}
-          {!trace && !errorMsg && !isLoading && !unknownAttempt && <p className="text-sm text-slate-300">Run the ticket to see the decision here.</p>}
+          {isLoading && <p role="status" className="flex items-center gap-2 text-sm text-slate-600"><Clock3 className="h-4 w-4 animate-pulse text-emerald-600" aria-hidden="true" />Checking the ticket and order…</p>}
+          {!trace && !errorMsg && !isLoading && !unknownAttempt && <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-10 text-center text-sm text-slate-500"><ReceiptText className="mx-auto mb-2 h-8 w-8 text-slate-400" aria-hidden="true" />Run the ticket to see the decision here.</div>}
           {trace && (
             <div className="space-y-4">
-              <div role="status" className={`rounded-lg border p-4 ${statusColor}`}>
+              <div role="status" className={`rounded-xl border p-4 ${statusColor}`}>
                 <h3 className="flex items-center gap-2 font-semibold"><StatusIcon className="h-5 w-5 shrink-0" aria-hidden="true" />{status}</h3>
-                <p className="mt-1 text-sm leading-relaxed text-slate-300">{explanation}</p>
+                <p className="mt-1 text-sm leading-relaxed text-slate-700">{explanation}</p>
               </div>
-              <dl className="grid grid-cols-2 gap-3 text-sm">
-                <div><dt className="text-slate-400">Order</dt><dd>{parsed?.order_id || 'Unknown'}</dd></div>
-                <div><dt className="text-slate-400">Requested</dt><dd>{parsed?.amount ? money(parsed.amount) : '—'}</dd></div>
-                <div><dt className="text-slate-400">Refund recorded</dt><dd>{trace.refund ? money(trace.refund.amount) : 'None'}</dd></div>
-                {trace.claim_judgment && <div><dt className="text-slate-400">AI judge</dt><dd className="capitalize">{trace.claim_judgment.verdict}</dd></div>}
-                {trace.agent_mode === 'live_gemini' && <div><dt className="text-slate-400">Read by</dt><dd>Gemini</dd></div>}
+              <dl className="grid grid-cols-2 gap-3 text-sm [&>div]:rounded-lg [&>div]:bg-slate-50 [&>div]:p-3 [&_dd]:mt-0.5 [&_dd]:font-semibold [&_dd]:text-slate-900">
+                <div><dt className="text-slate-500">Order</dt><dd>{parsed?.order_id || 'Unknown'}</dd></div>
+                <div><dt className="text-slate-500">Requested</dt><dd>{parsed?.amount ? money(parsed.amount) : '—'}</dd></div>
+                <div><dt className="text-slate-500">Refund recorded</dt><dd>{trace.refund ? money(trace.refund.amount) : 'None'}</dd></div>
+                {trace.claim_judgment && <div><dt className="text-slate-500">AI judge</dt><dd className="capitalize">{trace.claim_judgment.verdict}</dd></div>}
+                {trace.agent_mode === 'live_gemini' && <div><dt className="text-slate-500">Read by</dt><dd>Gemini</dd></div>}
               </dl>
-              {onNavigateTab && trace.pending_approval && <button className="text-sm font-semibold text-amber-300 underline" onClick={() => onNavigateTab('approvals')}>Open approvals</button>}
-              {onNavigateTab && trace.executed && <button className="text-sm font-semibold text-brand-300 underline" onClick={() => onNavigateTab('sandbox')}>See order balance</button>}
-              <details className="border-t border-borderSubtle pt-3 text-sm">
-                <summary className="cursor-pointer text-slate-300">Technical details</summary>
+              {onNavigateTab && trace.pending_approval && <button className="user-link text-sm" onClick={() => onNavigateTab('approvals')}>Open approvals</button>}
+              {onNavigateTab && trace.executed && <button className="user-link text-sm" onClick={() => onNavigateTab('sandbox')}>See order balance</button>}
+              <details className="border-t border-slate-200 pt-3 text-sm">
+                <summary className="cursor-pointer font-medium text-slate-600 hover:text-slate-900">Technical details</summary>
                 <ol className="mt-3 space-y-3 break-words">
-                  {trace.pipeline_stages?.map((stage) => <li key={stage.id}><strong>{stage.name}</strong><p className="text-slate-400">{stage.details}</p></li>)}
+                  {trace.pipeline_stages?.map((stage) => <li key={stage.id}><strong className="text-slate-800">{stage.name}</strong><p className="text-slate-500">{stage.details}</p></li>)}
                 </ol>
               </details>
             </div>

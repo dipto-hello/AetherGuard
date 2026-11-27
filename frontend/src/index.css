@@ -99,3 +99,26 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #334155;
 }
+
+/* User panel: light storefront theme. Admin panel keeps the dark theme above. */
+.theme-light {
+  color-scheme: light;
+  background-color: #F8FAFC;
+  background-image: linear-gradient(180deg, #ECFDF5 0, #F8FAFC 22rem);
+  color: #0F172A;
+}
+.theme-light :focus-visible { outline-color: #047857; }
+.theme-light ::selection { background: #A7F3D0; color: #064E3B; }
+.theme-light .user-card { background: #fff; border: 1px solid #E2E8F0; border-radius: 1rem; box-shadow: 0 1px 2px #0f172a0d, 0 8px 24px #0f172a0a; }
+.theme-light .user-field { display: block; width: 100%; margin-top: .375rem; border-radius: .625rem; border: 1px solid #CBD5E1; background: #fff; padding: .625rem .75rem; font-size: .9375rem; color: #0F172A; transition: border-color 150ms, box-shadow 150ms; }
+.theme-light .user-field:hover:not(:disabled) { border-color: #94A3B8; }
+.theme-light .user-field:focus { outline: none; border-color: #059669; box-shadow: 0 0 0 3px #05966933; }
+.theme-light .user-field:disabled { background: #F1F5F9; color: #64748B; cursor: not-allowed; }
+.theme-light .user-cta { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; min-height: 2.75rem; padding: .625rem 1.5rem; border-radius: .75rem; background: #F97316; color: #0F172A; font-weight: 700; font-size: .9375rem; cursor: pointer; box-shadow: 0 1px 2px #9a34121f; transition: background-color 150ms, transform 150ms; }
+.theme-light .user-cta:hover:not(:disabled) { background: #FB923C; }
+.theme-light .user-cta:active:not(:disabled) { transform: translateY(1px); }
+.theme-light .user-cta:disabled { opacity: .5; cursor: not-allowed; }
+.theme-light .user-link { color: #047857; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.theme-light .user-link:hover { color: #065F46; }
+.theme-light ::-webkit-scrollbar-track { background: #F1F5F9; }
+.theme-light ::-webkit-scrollbar-thumb { background: #CBD5E1; }

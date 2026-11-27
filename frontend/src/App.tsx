@@ -158,9 +158,9 @@ export function App() {
   // Login view when not authenticated
   if (!role) {
     return (
-      <main className="workspace-shell min-h-screen bg-background text-slate-100 flex items-center justify-center p-6">
+      <main className="theme-light min-h-screen flex items-center justify-center p-6">
         <form
-          className="w-full max-w-md bg-surface border border-borderSubtle rounded-2xl p-8 space-y-5 shadow-2xl"
+          className="user-card w-full max-w-md p-8 space-y-5"
           onSubmit={async (event) => {
             event.preventDefault();
             setIsConnecting(true);
@@ -183,21 +183,21 @@ export function App() {
           }}
         >
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-brand-500/10 border border-brand-500/30 flex items-center justify-center text-brand-400">
-              <ShieldCheck className="w-6 h-6" />
+            <div className="w-11 h-11 rounded-xl bg-emerald-600 flex items-center justify-center text-white">
+              <ShieldCheck className="w-6 h-6" aria-hidden="true" />
             </div>
             <div>
-              <h1 className="text-base font-bold text-white">AetherGuard</h1>
-              <p className="text-xs text-slate-400">Refund review</p>
+              <h1 className="text-lg font-bold text-slate-900">AetherGuard</h1>
+              <p className="text-sm text-slate-500">Refund review</p>
             </div>
           </div>
 
           <div className="space-y-1.5 pt-2">
-            <label htmlFor="operator-token" className="block text-xs font-semibold text-slate-300">
+            <label htmlFor="operator-token" className="block text-sm font-semibold text-slate-800">
               Password
             </label>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Admin password: <span className="font-mono text-slate-200">admin</span> · User password: <span className="font-mono text-slate-200">user</span>
+            <p className="text-sm text-slate-500 leading-relaxed">
+              Admin password: <span className="font-mono font-semibold text-slate-800">admin</span> · User password: <span className="font-mono font-semibold text-slate-800">user</span>
             </p>
             <input
               id="operator-token"
@@ -207,22 +207,22 @@ export function App() {
               value={tokenInput}
               onChange={(event) => setTokenInput(event.target.value)}
               placeholder="Enter password"
-              className="w-full bg-background border border-borderStrong rounded-xl px-4 py-2.5 text-sm font-mono text-white focus:outline-none focus:border-brand-500 transition"
+              className="user-field font-mono"
             />
           </div>
 
           {connectError && (
-            <p role="alert" className="text-xs text-red-400 bg-red-950/30 border border-red-900/50 p-3 rounded-lg font-mono">
+            <p role="alert" className="text-sm text-red-800 bg-red-50 border border-red-200 p-3 rounded-lg">
               {connectError}
             </p>
           )}
 
           <button
-            className="w-full py-3 rounded-xl bg-brand-500 hover:bg-brand-400 text-slate-950 font-bold text-sm transition disabled:opacity-50 shadow-md flex items-center justify-center gap-2"
+            className="user-cta w-full"
             type="submit"
             disabled={isConnecting}
           >
-            <KeyRound className="w-4 h-4" />
+            <KeyRound className="w-4 h-4" aria-hidden="true" />
             <span>{isConnecting ? 'Signing in…' : 'Sign in'}</span>
           </button>
         </form>
@@ -231,7 +231,7 @@ export function App() {
   }
 
   return (
-    <div className="workspace-shell min-h-screen bg-background text-slate-100 flex flex-col font-sans selection:bg-brand-500 selection:text-slate-950">
+    <div className={`min-h-screen flex flex-col font-sans ${isAdmin ? 'workspace-shell bg-background text-slate-100 selection:bg-brand-500 selection:text-slate-950' : 'theme-light'}`}>
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:px-4 focus:py-2 focus:bg-brand-500 focus:text-slate-950 focus:font-semibold focus:rounded-lg focus:shadow-lg focus:outline-none"
@@ -253,14 +253,14 @@ export function App() {
 
       <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 outline-none">
         {globalError && (
-          <div role="alert" className="mb-6 p-4 rounded-xl bg-red-950/30 border border-red-800/40 flex items-center justify-between text-xs text-red-300">
+          <div role="alert" className={`mb-6 p-4 rounded-xl border flex items-center justify-between ${isAdmin ? 'bg-red-950/30 border-red-800/40 text-xs text-red-300' : 'bg-red-50 border-red-200 text-sm text-red-800'}`}>
             <div className="flex items-center gap-2">
-              <AlertCircle className="w-5 h-5 flex-shrink-0 text-red-400" />
+              <AlertCircle className="w-5 h-5 flex-shrink-0 text-red-500" aria-hidden="true" />
               <span>{globalError}</span>
             </div>
             <button
               onClick={loadAllData}
-              className="px-3 py-1.5 rounded-lg bg-red-900/40 hover:bg-red-800/60 text-white font-mono flex items-center gap-1.5 transition"
+              className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition ${isAdmin ? 'bg-red-900/40 hover:bg-red-800/60 text-white font-mono' : 'bg-white border border-red-300 hover:bg-red-100 text-red-800 font-semibold'}`}
             >
               <RefreshCw className="w-3.5 h-3.5" />
               <span>Retry</span>
@@ -269,9 +269,9 @@ export function App() {
         )}
 
         {isLoading ? (
-          <div className="flex flex-col items-center justify-center py-24 gap-3 text-slate-400">
-            <RefreshCw className="w-7 h-7 animate-spin text-brand-400" />
-            <span className="text-xs font-mono">Loading…</span>
+          <div role="status" className="flex flex-col items-center justify-center py-24 gap-3 text-slate-500">
+            <RefreshCw className={`w-7 h-7 animate-spin ${isAdmin ? 'text-brand-400' : 'text-emerald-600'}`} aria-hidden="true" />
+            <span className="text-sm">Loading…</span>
           </div>
         ) : (
           <>

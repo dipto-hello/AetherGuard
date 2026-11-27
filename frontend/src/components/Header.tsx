@@ -35,6 +35,42 @@ export const Header: React.FC<HeaderProps> = ({
 
   const formatLimit = (amount: number) => formatPolicyLimit(amount) ?? '—';
 
+  if (!isAdmin) return (
+    <header className="sm:sticky top-0 z-50 border-b border-slate-200 bg-white/90 backdrop-blur">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-wrap items-center justify-between gap-3 py-3">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 shrink-0 rounded-xl bg-emerald-600 flex items-center justify-center text-white">
+            <ShieldCheck className="w-5 h-5" aria-hidden="true" />
+          </div>
+          <div>
+            <span className="block font-bold text-base text-slate-900 tracking-tight">AetherGuard</span>
+            <p className="text-sm text-slate-500">Refund center</p>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          {policy && formatPolicyLimit(policy.auto_allow_threshold) && (
+            <span className="hidden md:inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1.5 text-sm text-emerald-800">
+              <ShieldCheck className="w-4 h-4" aria-hidden="true" />
+              Instant refunds up to <strong>{formatLimit(policy.auto_allow_threshold)}</strong>
+            </span>
+          )}
+          <span className="text-sm font-semibold px-3 py-1.5 rounded-full bg-slate-100 text-slate-700" title="All amounts are Bangladeshi taka">
+            BDT (৳)
+          </span>
+          {onChangeToken && (
+            <button
+              onClick={onChangeToken}
+              className="min-h-[2.5rem] text-sm font-semibold px-3.5 py-2 rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 hover:border-slate-400 transition flex items-center gap-1.5 cursor-pointer"
+            >
+              <KeyRound className="w-4 h-4" aria-hidden="true" />
+              <span>Sign out</span>
+            </button>
+          )}
+        </div>
+      </div>
+    </header>
+  );
+
   return (
     <header className="app-header border-b border-borderSubtle sm:sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
