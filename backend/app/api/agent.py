@@ -1,13 +1,15 @@
 """Agent Integration REST API Routes"""
 import base64
 import binascii
+import uuid
+from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field, PrivateAttr, model_validator
 from typing import Literal, Optional
 
 from app.sandbox.db import get_connection
-from app.sandbox.service import get_task_scope, DuplicateIdempotencyError
+from app.sandbox.service import get_task_scope, get_order, save_task_scope, DuplicateIdempotencyError
 from app.policy.models import TaskScope
 from app.governance.boundary import GovernanceBoundary
 from app.agent.core import SupportAgent
@@ -17,7 +19,8 @@ router = APIRouter(prefix="/api/agent", tags=["Agent"])
 
 class ProcessTicketRequest(BaseModel):
     ticket_text: str = Field(..., min_length=1, max_length=10000, description="Customer support ticket text in English or Bengali")
-    scope_id: Optional[str] = Field(None, description="Operator authorized task scope ID")
+    scope_id: Optional[str] = Field(None, description="Operator authorized task scope ID (admin only)")
+    order_id: Optional[str] = Field(None, min_length=1, max_length=64, description="User role: the order this refund is for; the server derives the scope from its record")
     force_mode: Optional[Literal["live"]] = Field(None, description="Legacy client field; ticket processing always uses the live model")
     expected_amount: Optional[int] = Field(None, strict=True, gt=0, le=2**53 - 1, description="Exact amount in a generated example")
     idempotency_key: str = Field(..., min_length=1, max_length=128, pattern=r'.*\S.*', description="Stable key for this request")
@@ -53,8 +56,34 @@ async def get_benchmark_tickets():
     """Retrieve pre-configured benchmark customer tickets (English, Bengali, and Adversarial Injections)."""
     return {"tickets": BENCHMARK_TICKETS}
 
+def _scope_from_order_record(conn, req: ProcessTicketRequest) -> TaskScope:
+    """A requester must not set their own limits: the scope comes only from the stored order."""
+    if req.scope_id is not None:
+        raise HTTPException(403, detail={"code": "SCOPE_NOT_ALLOWED", "message": "Refund permission is set from the order record."})
+    if req.order_id is None:
+        raise HTTPException(422, detail={"code": "ORDER_REQUIRED", "message": "Choose the order this refund is for."})
+    order = get_order(conn, req.order_id)
+    if order is None:
+        raise HTTPException(404, detail={"code": "ORDER_NOT_FOUND", "message": "This order was not found."})
+    if order["currency"] != "BDT":
+        raise HTTPException(422, detail={"code": "CURRENCY_MISMATCH", "message": "This order cannot be refunded online."})
+    if order["refundable_amount"] <= 0:
+        raise HTTPException(422, detail={"code": "NOTHING_TO_REFUND", "message": "This order has already been fully refunded."})
+    raw = save_task_scope(
+        conn=conn,
+        scope_id=f"scope_{uuid.uuid4().hex[:10]}",
+        operator_id="demo_operator",  # the in-process MCP binds scopes to this principal
+        order_id=order["id"],
+        allowed_action="refund_order",
+        max_amount=order["refundable_amount"],
+        allowed_currency="BDT",
+        allowed_destination=order["original_destination"],
+        expires_at=(datetime.now(timezone.utc) + timedelta(hours=1)).isoformat(),
+    )
+    return TaskScope(**raw)
+
 @router.post("/process-ticket")
-async def process_ticket_endpoint(req: ProcessTicketRequest):
+async def process_ticket_endpoint(req: ProcessTicketRequest, request: Request):
     """
     Simulate real support agent receiving a ticket, looking up order data,
     and proposing actions through the AetherGuard zero-trust boundary.
@@ -62,7 +91,9 @@ async def process_ticket_endpoint(req: ProcessTicketRequest):
     conn = get_connection()
     try:
         task_scope = None
-        if req.scope_id:
+        if getattr(request.state, "role", None) == "user":
+            task_scope = _scope_from_order_record(conn, req)
+        elif req.scope_id:
             raw_scope = get_task_scope(conn, req.scope_id)
             if raw_scope:
                 task_scope = TaskScope(**raw_scope)

@@ -3,12 +3,12 @@ import hmac
 import json
 import os
 
-# Exact (method, path) pairs the user role may call: the "Test a refund" flow only.
+# Exact (method, path) pairs the user role may call: the refund request flow only.
+# Users never create scopes; process-ticket derives one from the order record for them.
 USER_ROUTES = {
     ("GET", "/api/me"),
     ("GET", "/api/sandbox/orders"),
     ("GET", "/api/governance/policy"),
-    ("POST", "/api/governance/scopes"),
     ("POST", "/api/agent/process-ticket"),
     ("GET", "/api/governance/actions/lookup"),
 }
@@ -45,6 +45,8 @@ class OperatorAuthMiddleware:
         elif role == "user" and (scope.get("method"), path) not in USER_ROUTES:
             status, body = 403, b'{"detail":"Admin access required"}'
         else:
+            # Endpoints read request.state.role to apply role-specific trust rules.
+            scope.setdefault("state", {})["role"] = role
             return await self.app(scope, receive, send)
         await send({"type": "http.response.start", "status": status, "headers": [(b"content-type", b"application/json")]})
         await send({"type": "http.response.body", "body": body})

@@ -17,7 +17,7 @@ AetherGuard is an AI agent governance prototype built for the International AI B
 
 ## How it works
 
-1. **Authorize a task.** The operator selects an order and grants a scope with the original refund destination, cumulative amount limit, and expiry.
+1. **Authorize a task.** The operator selects an order and grants a scope with the original refund destination, cumulative amount limit, and expiry. User-panel requests only name the order; the server derives their scope from the order record.
 2. **Judge the claim.** Gemini reviews the ticket and an optional evidence photo against a fixed refund policy (the company refunds shipping damage, wrong or missing items, non-delivery, and defects, but not damage the customer caused or a change of mind) and answers valid, unsure, or invalid. An invalid claim is blocked with `CLAIM_INVALID` and the judge's reason. An unsure claim (or a judge failure) still goes through every rule, but a refund the rules would allow waits in **Approvals** with the judge's reason instead of paying automatically.
 3. **Propose a refund.** Unless the claim is invalid, Gemini reads the English or Bengali ticket and proposes structured arguments. The backend calls the governed MCP refund tool.
 4. **Enforce policy.** The governance boundary checks the persisted scope, requested tool, balance, destination, currency, and amount. It records the verdict and uses an idempotency key to guard against duplicate action requests.
@@ -95,7 +95,7 @@ Open `http://localhost:5173` and enter the local operator token. API documentati
 | Variable | Purpose |
 | --- | --- |
 | `AETHERGUARD_OPERATOR_TOKEN` | Admin password. Required for protected HTTP routes. |
-| `AETHERGUARD_USER_TOKEN` | Optional user-panel password. It can only test refunds: list orders, read rules, create a task scope, process a ticket, and look up an action. Every other route returns 403. |
+| `AETHERGUARD_USER_TOKEN` | Optional user-panel password. It can only request refunds: list orders, read rules, process a ticket for a chosen order, and look up an action. It cannot create or supply a task scope; the server builds one from the order record (original destination, remaining refundable balance, BDT, one-hour expiry). Every other route returns 403. |
 | `GEMINI_API_KEY` | Required for the AI claim judge and live ticket proposals. The rule tests and order controls work without it. |
 | `AETHERGUARD_DB_PATH` | Optional SQLite path. Defaults to `backend/data/sandbox.db`. |
 | `AETHERGUARD_AUTHENTICATED_OPERATOR` | Trusted caller identity supplied by the launcher for a stdio MCP session. |

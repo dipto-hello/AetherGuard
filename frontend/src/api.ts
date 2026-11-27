@@ -1,7 +1,6 @@
 import type {
   Order,
   Refund,
-  TaskScope,
   PendingAction,
   AuditEvent,
   PolicyConfig,
@@ -112,24 +111,6 @@ export async function updatePolicy(updates: Partial<PolicyConfig>): Promise<Poli
   return data.policy;
 }
 
-export async function createTaskScope(scope: {
-  order_id: string;
-  allowed_action: string;
-  max_amount: number;
-  allowed_currency: string;
-  allowed_destination: string;
-  expires_in_hours: number;
-}): Promise<TaskScope> {
-  const res = await apiFetch(`/api/governance/scopes`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(scope)
-  });
-  if (!res.ok) throw new Error(await extractErrorMessage(res, 'Failed to create task scope'));
-  const data = await res.json();
-  return data.scope;
-}
-
 export async function fetchPendingApprovals(): Promise<PendingAction[]> {
   const res = await apiFetch(`/api/governance/pending-approvals`);
   if (!res.ok) throw new Error(await extractErrorMessage(res, 'Failed to fetch pending approvals'));
@@ -171,7 +152,7 @@ export async function fetchBenchmarkTickets(): Promise<BenchmarkTicket[]> {
 
 export async function processAgentTicket(
   ticketText: string,
-  scopeId?: string,
+  orderId: string,
   idempotencyKey?: string,
   expectedAmount?: number,
   evidence?: { data: string; mimeType: string },
@@ -181,7 +162,7 @@ export async function processAgentTicket(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       ticket_text: ticketText,
-      scope_id: scopeId,
+      order_id: orderId,
       expected_amount: expectedAmount,
       idempotency_key: idempotencyKey,
       evidence_image: evidence?.data,

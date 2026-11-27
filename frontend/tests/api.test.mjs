@@ -31,9 +31,10 @@ test('ticket proposal includes the supplied idempotency key', async () => {
     payload = JSON.parse(options.body);
     return new Response(JSON.stringify({ trace: {} }), { status: 200 });
   };
-  await api.processAgentTicket('synthetic ticket', 'scope-1', 'attempt-1');
+  await api.processAgentTicket('synthetic ticket', 'ORD-101', 'attempt-1');
   assert.equal(payload.idempotency_key, 'attempt-1');
-  assert.equal(payload.scope_id, 'scope-1');
+  assert.equal(payload.order_id, 'ORD-101');
+  assert.equal(payload.scope_id, undefined);
   assert.equal(payload.evidence_image, undefined);
   assert.equal(payload.evidence_mime_type, undefined);
 });
@@ -44,7 +45,7 @@ test('ticket proposal sends an attached evidence photo', async () => {
     payload = JSON.parse(options.body);
     return new Response(JSON.stringify({ trace: {} }), { status: 200 });
   };
-  await api.processAgentTicket('t', 's', 'k', undefined, { data: 'QUJD', mimeType: 'image/jpeg' });
+  await api.processAgentTicket('t', 'ORD-101', 'k', undefined, { data: 'QUJD', mimeType: 'image/jpeg' });
   assert.equal(payload.evidence_image, 'QUJD');
   assert.equal(payload.evidence_mime_type, 'image/jpeg');
 });

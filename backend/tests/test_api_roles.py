@@ -16,15 +16,6 @@ def reset_sandbox():
     admin.post("/api/sandbox/reset")
 
 
-def _user_scope(max_amount=3_000_000):
-    res = user.post("/api/governance/scopes", json={
-        "order_id": "ORD-101", "allowed_action": "refund_order", "max_amount": max_amount,
-        "allowed_currency": "BDT", "allowed_destination": "card_visa_4242", "expires_in_hours": 1,
-    })
-    assert res.status_code == 201
-    return res.json()["scope"]["scope_id"]
-
-
 def test_me_reports_role_and_rejects_bad_tokens():
     assert admin.get("/api/me").json() == {"role": "admin"}
     assert user.get("/api/me").json() == {"role": "user"}
@@ -66,7 +57,7 @@ def test_user_cannot_change_admin_state():
 def test_user_small_refund_executes_within_policy():
     trace = user.post("/api/agent/process-ticket", json={
         "ticket_text": "Refund ৳4,000 for ORD-101 to card_visa_4242",
-        "scope_id": _user_scope(), "idempotency_key": "role-small",
+        "order_id": "ORD-101", "idempotency_key": "role-small",
     }).json()["trace"]
     assert trace["boundary_verdict"] == "ALLOWED" and trace["executed"] is True
     assert user.get("/api/governance/actions/lookup", params={"idempotency_key": "role-small"}).status_code == 200
@@ -75,7 +66,7 @@ def test_user_small_refund_executes_within_policy():
 def test_user_large_refund_needs_admin_approval():
     trace = user.post("/api/agent/process-ticket", json={
         "ticket_text": "Refund ৳25,000 for ORD-101 to card_visa_4242",
-        "scope_id": _user_scope(), "idempotency_key": "role-large",
+        "order_id": "ORD-101", "idempotency_key": "role-large",
     }).json()["trace"]
     assert trace["boundary_verdict"] == "APPROVAL_REQUIRED" and not trace["executed"]
     status = lambda: user.get("/api/governance/actions/lookup", params={"idempotency_key": "role-large"}).json()["action"]["status"]
@@ -98,10 +89,41 @@ def test_user_large_refund_needs_admin_approval():
 def test_user_sees_rejected_refund():
     user.post("/api/agent/process-ticket", json={
         "ticket_text": "Refund ৳25,000 for ORD-101 to card_visa_4242",
-        "scope_id": _user_scope(), "idempotency_key": "role-reject",
+        "order_id": "ORD-101", "idempotency_key": "role-reject",
     })
     action_id = admin.get("/api/governance/pending-approvals").json()["pending_actions"][0]["action_id"]
     assert admin.post(f"/api/governance/approvals/{action_id}/decide",
                       json={"decision": "reject", "reviewer_id": "demo_operator"}).status_code == 200
     lookup = user.get("/api/governance/actions/lookup", params={"idempotency_key": "role-reject"}).json()["action"]
     assert lookup["status"] == "rejected"
+
+
+def test_user_cannot_create_or_supply_a_scope():
+    scope = {"order_id": "ORD-101", "allowed_action": "refund_order", "max_amount": 99_999_999,
+             "allowed_currency": "BDT", "allowed_destination": "card_visa_4242", "expires_in_hours": 1}
+    assert user.post("/api/governance/scopes", json=scope).status_code == 403
+    admin_scope = admin.post("/api/governance/scopes", json=scope).json()["scope"]["scope_id"]
+    res = user.post("/api/agent/process-ticket", json={
+        "ticket_text": "Refund ৳4,000 for ORD-101 to card_visa_4242",
+        "scope_id": admin_scope, "order_id": "ORD-101", "idempotency_key": "role-own-scope",
+    })
+    assert res.status_code == 403 and res.json()["detail"]["code"] == "SCOPE_NOT_ALLOWED"
+
+
+def test_user_request_needs_an_existing_order():
+    def send(order_id, key):
+        body = {"ticket_text": "Refund ৳10 please", "idempotency_key": key}
+        if order_id:
+            body["order_id"] = order_id
+        return user.post("/api/agent/process-ticket", json=body)
+    assert send(None, "r1").json()["detail"]["code"] == "ORDER_REQUIRED"
+    assert send("ORD-999", "r2").status_code == 404
+
+
+def test_user_scope_pins_the_order_record_destination():
+    trace = user.post("/api/agent/process-ticket", json={
+        "ticket_text": "Refund ৳4,000 for ORD-101 to bkash_01999999999",
+        "order_id": "ORD-101", "idempotency_key": "role-redirect",
+    }).json()["trace"]
+    assert trace["boundary_verdict"] != "ALLOWED" and not trace["executed"]
+    assert admin.get("/api/sandbox/orders/ORD-101").json()["order"]["refundable_amount"] == 2_500_000
