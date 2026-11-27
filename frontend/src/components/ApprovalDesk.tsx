@@ -6,14 +6,12 @@ import { AnimatePresence, motion } from 'motion/react';
 
 interface ApprovalDeskProps {
   pendingActions: PendingAction[];
-  onActionDecided: () => void | Promise<void>;
-  onNavigateTab?: (tab: string) => void;
+  onActionDecided: () => unknown;
 }
 
 export const ApprovalDesk: React.FC<ApprovalDeskProps> = ({
   pendingActions,
-  onActionDecided,
-  onNavigateTab
+  onActionDecided
 }) => {
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -72,7 +70,6 @@ export const ApprovalDesk: React.FC<ApprovalDeskProps> = ({
         {pendingActions.length === 0 && (
           <div className="rounded-xl border border-borderSubtle bg-surface p-5">
             <p className="font-semibold text-white">No refunds waiting for approval</p>
-            {onNavigateTab && <button className="mt-2 text-sm text-brand-300 underline" onClick={() => onNavigateTab('arena')}>Test a refund</button>}
           </div>
         )}
         <AnimatePresence initial={false}>

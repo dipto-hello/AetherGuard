@@ -8,7 +8,7 @@ import { formatMinor } from '../policyMoney';
 interface SandboxViewerProps {
   orders: Order[];
   refunds: Refund[];
-  onRefresh: () => void;
+  onRefresh: () => Promise<boolean>;
   onOrderUpdated: (order: Order) => void;
 }
 
@@ -68,6 +68,12 @@ export const SandboxViewer: React.FC<SandboxViewerProps> = ({ orders, refunds, o
   // Legacy non-BDT records from before the taka-only change are shown in their own currency, read-only.
   const formatCurrency = (currency: string, minor: number) =>
     Number.isSafeInteger(minor) ? formatMinor(BigInt(minor), currency) : '—';
+  const [refresh, setRefresh] = useState<{ state: 'loading' | 'done' | 'failed'; at?: string } | null>(null);
+  const handleRefresh = async () => {
+    setRefresh({ state: 'loading' });
+    const ok = await onRefresh();
+    setRefresh(ok ? { state: 'done', at: new Date().toLocaleTimeString() } : { state: 'failed' });
+  };
 
   return (
     <div className="space-y-6">
@@ -85,15 +91,20 @@ export const SandboxViewer: React.FC<SandboxViewerProps> = ({ orders, refunds, o
               All amounts are in Bangladeshi taka (BDT).
             </p>
           </div>
-          <button
-            onClick={onRefresh}
-            className="px-3 py-1.5 rounded-lg bg-surfaceCard hover:bg-slate-800 border border-borderStrong text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition"
-            title="Refresh database state"
-            aria-label="Refresh database state"
-          >
-            <RefreshCw className="w-3.5 h-3.5 text-brandCyan" />
-            <span>Refresh</span>
-          </button>
+          <div className="flex flex-col items-end gap-1">
+            <button
+              onClick={handleRefresh}
+              disabled={refresh?.state === 'loading'}
+              className="px-3 py-1.5 rounded-lg bg-surfaceCard hover:bg-slate-800 border border-borderStrong text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition disabled:opacity-60 cursor-pointer"
+              title="Reload order balances and refunds"
+            >
+              <RefreshCw aria-hidden="true" className={`w-3.5 h-3.5 text-brandCyan ${refresh?.state === 'loading' ? 'animate-spin' : ''}`} />
+              <span>{refresh?.state === 'loading' ? 'Refreshing…' : 'Refresh'}</span>
+            </button>
+            <p role="status" className={`text-xs ${refresh?.state === 'failed' ? 'text-red-400' : 'text-slate-400'}`}>
+              {refresh?.state === 'done' ? 'Updated ' + refresh.at : refresh?.state === 'failed' ? 'Could not refresh. Try again.' : ''}
+            </p>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">

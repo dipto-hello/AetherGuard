@@ -72,7 +72,8 @@ export function App() {
     polling.current = false;
   }, []);
 
-  const loadAllData = async () => {
+  // Resolves true only when every request in this load succeeded.
+  const loadAllData = async (): Promise<boolean> => {
     const load = ++latestLoad.current;
     polling.current = true;
     try {
@@ -85,7 +86,7 @@ export function App() {
         isAdmin ? fetchAuditLogs() : Promise.resolve([] as AuditEvent[]),
       ]);
 
-      if (load !== latestLoad.current) return;
+      if (load !== latestLoad.current) return false;
       const [ordRes, polRes, refRes, pendingRes, logRes] = results;
 
       if (ordRes.status === 'fulfilled') setOrders(ordRes.value);
@@ -99,16 +100,18 @@ export function App() {
         if (failures.some(f => f.reason?.message?.includes('Access denied'))) {
           setOperatorToken('');
           setRole(null);
-          return;
+          return false;
         }
         setGlobalError(failures.length === results.length
           ? 'Unable to load dashboard data.'
           : 'Some dashboard data could not refresh. Displayed values may be stale.');
-      } else {
-        setGlobalError(null);
+        return false;
       }
+      setGlobalError(null);
+      return true;
     } catch (err) {
       if (load === latestLoad.current) setGlobalError(err instanceof Error ? err.message : 'Could not load dashboard data.');
+      return false;
     } finally {
       if (load === latestLoad.current) {
         polling.current = false;
@@ -292,7 +295,6 @@ export function App() {
               <ApprovalDesk
                 pendingActions={pendingActions}
                 onActionDecided={loadAllData}
-                onNavigateTab={(tab) => setActiveTab(tab)}
               />
             )}
 
@@ -315,7 +317,7 @@ export function App() {
               <SandboxViewer
                 orders={orders}
                 refunds={refunds}
-                onRefresh={() => { void loadAllData(); }}
+                onRefresh={loadAllData}
                 onOrderUpdated={(updated) => {
                   setOrders((current) => current.map((order) => order.id === updated.id ? updated : order));
                   void loadAllData();
