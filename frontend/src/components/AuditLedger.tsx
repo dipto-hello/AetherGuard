@@ -34,7 +34,7 @@ export const AuditLedger: React.FC<AuditLedgerProps> = ({ logs }) => {
         <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Recent activity">
           <table className="w-full text-left text-xs font-mono border-collapse">
             <thead>
-              <tr className="border-b border-borderSubtle text-[11px] text-slate-400">
+              <tr className="border-b border-borderStrong bg-surfaceCard text-[11px] uppercase tracking-wider text-slate-400">
                 <th className="py-2.5 px-3 font-semibold">Date &amp; Time</th>
                 <th className="py-2.5 px-3 font-semibold">ID</th>
                 <th className="py-2.5 px-3 font-semibold">Action</th>
@@ -50,7 +50,7 @@ export const AuditLedger: React.FC<AuditLedgerProps> = ({ logs }) => {
                 const isPending = log.verdict === 'APPROVAL_REQUIRED';
 
                 return (
-                  <tr key={log.id} className="hover:bg-surfaceCard/60 transition">
+                  <tr key={log.id} className="odd:bg-white/[0.015] hover:bg-surfaceCard transition">
                     <td className="py-2.5 px-3 text-slate-400 whitespace-nowrap">
                       {log.created_at}
                     </td>

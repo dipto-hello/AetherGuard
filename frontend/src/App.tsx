@@ -231,7 +231,7 @@ export function App() {
   }
 
   return (
-    <div className={`min-h-screen flex flex-col font-sans ${isAdmin ? 'workspace-shell bg-background text-slate-100 selection:bg-brand-500 selection:text-slate-950' : 'theme-light'}`}>
+    <div className={`min-h-screen flex flex-col font-sans ${isAdmin ? 'lg:flex-row workspace-shell bg-background text-slate-100 selection:bg-brand-500 selection:text-slate-950' : 'theme-light'}`}>
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:px-4 focus:py-2 focus:bg-brand-500 focus:text-slate-950 focus:font-semibold focus:rounded-lg focus:shadow-lg focus:outline-none"
@@ -251,7 +251,7 @@ export function App() {
         isAdmin={isAdmin}
       />
 
-      <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 outline-none">
+      <main id="main-content" tabIndex={-1} className={`flex-1 min-w-0 w-full mx-auto px-4 sm:px-6 lg:px-8 outline-none ${isAdmin ? 'max-w-6xl py-8' : 'max-w-7xl py-6'}`}>
         {globalError && (
           <div role="alert" className={`mb-6 p-4 rounded-xl border flex items-center justify-between ${isAdmin ? 'bg-red-950/30 border-red-800/40 text-xs text-red-300' : 'bg-red-50 border-red-200 text-sm text-red-800'}`}>
             <div className="flex items-center gap-2">
